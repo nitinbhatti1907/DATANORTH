@@ -1,30 +1,42 @@
 import type { ChartDataResponse } from "@/types";
 
-/**
- * Chart-level data download.
- *
- * IMPORTANT: `papaparse` and `xlsx` are HEAVY (~570 KB combined).
- * They are imported lazily inside each function so they are only
- * fetched when the user actually clicks a download button — not
- * on every page load that might contain a chart.
- */
-
 function buildRows(data: ChartDataResponse) {
   const rows: Record<string, string | number | null>[] = [];
-  for (const series of data.series) {
-    for (const p of series.points) {
-      rows.push({
-        indicator: data.indicator.name,
-        indicator_slug: data.indicator.slug,
-        unit: data.indicator.unit,
-        geography_code: series.geographyCode,
-        geography: series.geographyName,
-        year: p.year,
-        value: p.value,
-        is_forecast: p.isForecast ? "true" : "false",
-        confidence_low: p.confidenceLow ?? null,
-        confidence_high: p.confidenceHigh ?? null,
-      });
+
+  if (data.shape === "composition" && data.composition) {
+    for (const series of data.composition) {
+      for (const p of series.parts) {
+        rows.push({
+          indicator: data.indicator.name,
+          indicator_slug: data.indicator.slug,
+          unit: data.indicator.unit,
+          geography_code: series.geographyCode,
+          geography: series.geographyName,
+          year: series.year,
+          category: p.label,
+          value: p.value,
+        });
+      }
+    }
+    return rows;
+  }
+
+  if (data.series) {
+    for (const series of data.series) {
+      for (const p of series.points) {
+        rows.push({
+          indicator: data.indicator.name,
+          indicator_slug: data.indicator.slug,
+          unit: data.indicator.unit,
+          geography_code: series.geographyCode,
+          geography: series.geographyName,
+          year: p.year,
+          value: p.value,
+          is_forecast: p.isForecast ? "true" : "false",
+          confidence_low: p.confidenceLow ?? null,
+          confidence_high: p.confidenceHigh ?? null,
+        });
+      }
     }
   }
   return rows;
@@ -45,6 +57,7 @@ function buildReadme(data: ChartDataResponse): string[] {
     `# Methodology: ${data.indicator.methodology}`,
     `# License: ${data.indicator.license}`,
     `# Last updated at source: ${data.indicator.lastUpdated}`,
+    `# Data shape: ${data.shape}`,
     `# Filters applied: geography=[${geos}]; years=${years}`,
     `# Exported from DATANORTH at ${data.generatedAt}`,
     data.indicator.isSample
@@ -64,7 +77,6 @@ function slugifyFilename(data: ChartDataResponse): string {
 }
 
 export async function downloadCSV(data: ChartDataResponse) {
-  // Lazy-load papaparse only at click time
   const { default: Papa } = await import("papaparse");
   const rows = buildRows(data);
   const csvBody = Papa.unparse(rows, { quotes: true });
@@ -75,7 +87,6 @@ export async function downloadCSV(data: ChartDataResponse) {
 }
 
 export async function downloadExcel(data: ChartDataResponse) {
-  // Lazy-load xlsx only at click time — this is the big bundle savings
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   const dataSheet = XLSX.utils.json_to_sheet(buildRows(data));
@@ -86,6 +97,7 @@ export async function downloadExcel(data: ChartDataResponse) {
     ["Indicator slug", data.indicator.slug],
     ["Category", data.indicator.category],
     ["Unit", data.indicator.unit],
+    ["Data shape", data.shape],
     ["Source", data.indicator.source],
     ["Source URL", data.indicator.sourceUrl],
     ["Methodology", data.indicator.methodology],

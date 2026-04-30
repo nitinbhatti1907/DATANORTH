@@ -6,7 +6,6 @@ import { IndicatorView } from "@/components/data/indicator-view";
 import { getIndicator, INDICATORS } from "@/lib/data/indicators";
 import { CATEGORIES } from "@/lib/data/categories";
 import { getAvailableYears } from "@/lib/query";
-import { INDICATOR_VALUES } from "@/lib/data/values";
 import { formatDate } from "@/lib/format";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 
@@ -43,7 +42,6 @@ export default async function IndicatorPage({
 
   const category = CATEGORIES[indicator.category];
   const years = getAvailableYears(slug);
-  const values = INDICATOR_VALUES.filter((v) => v.indicatorSlug === slug);
 
   return (
     <div className="content-container py-10">
@@ -109,7 +107,6 @@ export default async function IndicatorPage({
       <Suspense fallback={<IndicatorViewFallback />}>
         <IndicatorView
           indicator={indicator}
-          values={values}
           availableYears={years}
         />
       </Suspense>

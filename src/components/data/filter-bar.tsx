@@ -13,10 +13,12 @@ export interface FilterBarValue {
 export function FilterBar({
   value,
   availableYears,
+  showYearRange = true,
   onChange,
 }: {
   value: FilterBarValue;
   availableYears: number[];
+  showYearRange?: boolean;
   onChange: (update: {
     geographies?: string[];
     yearFrom?: number;
@@ -64,47 +66,51 @@ export function FilterBar({
         </div>
       </div>
 
-      <div>
-        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-          From
-        </label>
-        <Select
-          value={value.yearFrom ?? ""}
-          onChange={(e) =>
-            onChange({
-              yearFrom: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-        >
-          <option value="">All</option>
-          {availableYears.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {showYearRange && (
+        <>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
+              From
+            </label>
+            <Select
+              value={value.yearFrom ?? ""}
+              onChange={(e) =>
+                onChange({
+                  yearFrom: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            >
+              <option value="">All</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-      <div>
-        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-          To
-        </label>
-        <Select
-          value={value.yearTo ?? ""}
-          onChange={(e) =>
-            onChange({
-              yearTo: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-        >
-          <option value="">All</option>
-          {availableYears.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </Select>
-      </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
+              To
+            </label>
+            <Select
+              value={value.yearTo ?? ""}
+              onChange={(e) =>
+                onChange({
+                  yearTo: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+            >
+              <option value="">All</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </>
+      )}
     </div>
   );
 }

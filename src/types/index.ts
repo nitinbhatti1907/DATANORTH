@@ -12,14 +12,16 @@ export type CategorySlug =
 
 export type GeographyType = "region" | "district" | "csd" | "province";
 
+export type ChartShape = "timeseries" | "composition";
+
 export interface Category {
   slug: CategorySlug;
   name: string;
   shortName: string;
   description: string;
   longDescription: string;
-  accent: string; // hex
-  image: string; // /public path
+  accent: string;
+  image: string;
 }
 
 export interface Geography {
@@ -48,9 +50,11 @@ export interface Indicator {
     | "Weekly"
     | "Daily"
     | "Irregular";
-  lastUpdated: string; // ISO date
+  lastUpdated: string;
   featured?: boolean;
-  isSample?: boolean; // true = synthetic data for demonstration
+  isSample?: boolean;
+  shape?: ChartShape;
+  compositionCategories?: string[];
 }
 
 export interface IndicatorValue {
@@ -64,6 +68,14 @@ export interface IndicatorValue {
   confidenceHigh?: number;
   isForecast?: boolean;
   modelId?: string;
+}
+
+export interface CompositionValue {
+  indicatorSlug: string;
+  geographyCode: string;
+  year: number;
+  label: string;
+  value: number;
 }
 
 export interface ChartDataPoint {
@@ -80,9 +92,18 @@ export interface ChartSeries {
   points: ChartDataPoint[];
 }
 
+export interface CompositionSeries {
+  geographyCode: string;
+  geographyName: string;
+  year: number;
+  parts: Array<{ label: string; value: number }>;
+}
+
 export interface ChartDataResponse {
   indicator: Indicator;
-  series: ChartSeries[];
+  shape: ChartShape;
+  series?: ChartSeries[];
+  composition?: CompositionSeries[];
   filters: {
     geographies: string[];
     yearFrom?: number;
@@ -91,7 +112,6 @@ export interface ChartDataResponse {
   generatedAt: string;
 }
 
-// Community profile snapshot
 export interface CommunityProfile {
   geography: Geography;
   highlights: Array<{
@@ -102,14 +122,12 @@ export interface CommunityProfile {
   }>;
 }
 
-// Job data (from existing repo)
 export interface JobRow {
   noc: string;
   occupation: string;
   medianWage: number;
 }
 
-// Health service (from existing repo)
 export interface HealthService {
   id: string;
   name: string;
