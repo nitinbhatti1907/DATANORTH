@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { IndicatorCard } from "@/components/cards/indicator-card";
 import { KPIStrip, type KPITileData } from "@/components/data/kpi-strip";
+import { CategoryDashboard } from "@/components/data/category-dashboard";
+import { CategoryViewToggle } from "@/components/data/view-toggle";
 import { CATEGORY_LIST, getCategory } from "@/lib/data/categories";
 import { getIndicatorsByCategory } from "@/lib/data/indicators";
 import { getLatestValue } from "@/lib/query";
@@ -57,7 +60,7 @@ export default async function CategoryPage({
 
   return (
     <>
-      {/* Hero strip with image + tinted overlay */}
+      {/* Hero strip */}
       <section
         className="relative overflow-hidden border-b border-ink-200"
         style={{
@@ -124,33 +127,26 @@ export default async function CategoryPage({
         </section>
       )}
 
-      {/* All indicators in this category */}
-      <section className="content-container py-10">
-        <h2 className="font-display text-display-sm font-semibold tracking-tight text-ink-900">
-          All indicators ({indicators.length})
-        </h2>
-        {indicators.length === 0 ? (
-          <p className="mt-4 text-ink-600">
-            No indicators are currently published in this category.
-          </p>
-        ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
-            {indicators.map((i) => (
-              <IndicatorCard key={i.slug} indicator={i} />
-            ))}
-          </div>
-        )}
+      {/* View switcher + content */}
+      <Suspense fallback={null}>
+        <CategoryContent
+          category={category}
+          indicators={indicators}
+        />
+      </Suspense>
 
-        <div className="mt-10">
-          <Link
-            href="/categories"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Back to all categories
-          </Link>
-        </div>
-      </section>
+      <div className="content-container pb-10">
+        <Link
+          href="/categories"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Back to all categories
+        </Link>
+      </div>
     </>
   );
 }
+
+// Client wrapper for the toggle / content split (because it reads searchParams)
+import { CategoryContent } from "@/components/data/category-content";
