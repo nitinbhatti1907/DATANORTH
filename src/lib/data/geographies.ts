@@ -10,68 +10,54 @@ export const GEOGRAPHIES: Geography[] = [
     parentCode: "ON",
   },
 
-  // Census Divisions (Districts) in Northern Ontario
-  {
-    code: "NE-ON",
-    name: "Northeastern Ontario",
-    type: "region",
-    parentCode: "NORTHERN-ON",
-  },
-  {
-    code: "NW-ON",
-    name: "Northwestern Ontario",
-    type: "region",
-    parentCode: "NORTHERN-ON",
-  },
-
-  // Key communities (Census Subdivisions — approximate populations)
+  // Key communities — all rolled up directly under Northern Ontario
   {
     code: "SSM",
     name: "Sault Ste. Marie",
     type: "csd",
-    parentCode: "NE-ON",
-    population: 76731, // 2021 Census
+    parentCode: "NORTHERN-ON",
+    population: 76731,
   },
   {
     code: "SUDBURY",
     name: "Greater Sudbury",
     type: "csd",
-    parentCode: "NE-ON",
+    parentCode: "NORTHERN-ON",
     population: 166004,
   },
   {
     code: "THUNDER-BAY",
     name: "Thunder Bay",
     type: "csd",
-    parentCode: "NW-ON",
+    parentCode: "NORTHERN-ON",
     population: 108843,
   },
   {
     code: "NORTH-BAY",
     name: "North Bay",
     type: "csd",
-    parentCode: "NE-ON",
+    parentCode: "NORTHERN-ON",
     population: 52662,
   },
   {
     code: "TIMMINS",
     name: "Timmins",
     type: "csd",
-    parentCode: "NE-ON",
+    parentCode: "NORTHERN-ON",
     population: 41145,
   },
   {
     code: "KENORA",
     name: "Kenora",
     type: "csd",
-    parentCode: "NW-ON",
+    parentCode: "NORTHERN-ON",
     population: 14967,
   },
   {
     code: "ELLIOT-LAKE",
     name: "Elliot Lake",
     type: "csd",
-    parentCode: "NE-ON",
+    parentCode: "NORTHERN-ON",
     population: 11372,
   },
 ];

@@ -246,7 +246,7 @@ function CompositionLedLayout({
         )}
         {first && <ChartPanel data={first.data} height={460} />}
       </div>
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-5 lg:grid-cols-2">
         {others.map((c) => (
           <ChartPanel key={c.indicator.slug} data={c.data} height={280} />
         ))}
@@ -286,7 +286,7 @@ function SnapshotLayout({
         </div>
       </div>
       {hero && <ChartPanel data={hero.data} height={360} />}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2">
         {rest.map((c) => (
           <ChartPanel key={c.indicator.slug} data={c.data} height={260} />
         ))}
