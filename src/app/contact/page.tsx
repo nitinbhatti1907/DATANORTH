@@ -24,8 +24,7 @@ export default function ContactPage() {
             Email
           </div>
           <p className="mt-2 text-ink-800">
-            Please use the email address provided by your NORDIK Institute or
-            DECIDE Research Lab contact.
+            Please use the email address provided by NORDIK Institute.
           </p>
         </div>
       </div>
