@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "DATANORTH",
     description:
-      "A public data platform for Northern Ontario — in partnership with NORDIK Institute and the DECIDE Research Lab.",
+      "A public data platform for Northern Ontario — in partnership with NORDIK Institute.",
     type: "website",
     locale: "en_CA",
   },

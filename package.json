@@ -2,7 +2,7 @@
   "name": "datanorth",
   "version": "2.0.0",
   "private": true,
-  "description": "DATANORTH \u2014 a public data platform for Northern Ontario. Built for NORDIK Institute and the DECIDE Research Lab.",
+  "description": "DATANORTH \u2014 a public data platform for Northern Ontario. Built for NORDIK Institute.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

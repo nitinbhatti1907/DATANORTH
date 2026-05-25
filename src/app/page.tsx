@@ -127,15 +127,6 @@ export default function HomePage() {
               >
                 NORDIK Institute
               </a>
-              <span className="h-5 w-px bg-ink-200" aria-hidden />
-              <a
-                href="https://decideresearchlab.org"
-                target="_blank"
-                rel="noopener"
-                className="font-display text-xl font-semibold text-ink-800 hover:text-nordik-700"
-              >
-                DECIDE Research Lab
-              </a>
             </div>
             <p className="max-w-2xl text-sm text-ink-600">
               DATANORTH serves the communities of Northern Ontario. It is not

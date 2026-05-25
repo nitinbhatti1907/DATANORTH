@@ -2,7 +2,7 @@
 
 A public data platform for Northern Ontario.
 
-Built with NORDIK Institute and the DECIDE Research Lab.
+Built with NORDIK Institute.
 
 ---
 

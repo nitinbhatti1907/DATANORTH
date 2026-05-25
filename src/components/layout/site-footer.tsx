@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { NordikAttribution } from "./nordik-attribution";
 
 const FOOTER_SECTIONS = [
   {
@@ -48,31 +49,24 @@ export function SiteFooter() {
               DATANORTH
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-600">
-              A public data platform for Northern Ontario communities, built
-              with NORDIK Institute and the DECIDE Research Lab.
+              A public data platform for Northern Ontario communities,
+              developed by NORDIK Institute.
             </p>
-            <div className="mt-6 flex items-center gap-5">
+            <div className="mt-6">
+              <NordikAttribution variant="stacked" />
+            </div>
+            <div className="mt-5">
               <a
                 href="https://nordikinstitute.com"
                 target="_blank"
                 rel="noopener"
                 className="text-sm font-medium text-ink-700 link-underline"
               >
-                NORDIK Institute
-                <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
-              </a>
-              <a
-                href="https://decideresearchlab.org"
-                target="_blank"
-                rel="noopener"
-                className="text-sm font-medium text-ink-700 link-underline"
-              >
-                DECIDE Research Lab
+                Visit nordikinstitute.com
                 <ArrowUpRight className="ml-0.5 inline h-3 w-3" />
               </a>
             </div>
           </div>
-
           {FOOTER_SECTIONS.map((section) => (
             <div key={section.title}>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-500">
@@ -93,13 +87,24 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-
-        <div className="mt-12 flex flex-col gap-3 border-t border-ink-200 pt-6 text-xs text-ink-500 md:flex-row md:items-center md:justify-between">
+        <div className="mt-12 flex flex-col gap-4 border-t border-ink-200 pt-6 text-xs text-ink-500 md:flex-row md:items-center md:justify-between">
           <p>
             © {new Date().getFullYear()} DATANORTH. Data is attributed to its
             original sources — see each chart&rsquo;s methodology.
           </p>
-          <p className="font-mono">v2.0 · prototype</p>
+          <a
+            href="https://nordikinstitute.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block transition-opacity hover:opacity-80"
+            aria-label="Visit NORDIK Institute"
+          >
+            <img
+              src="/images/logos/nordik.png"
+              alt="NORDIK Institute"
+              className="h-8 w-auto"
+            />
+          </a>
         </div>
       </div>
     </footer>
