@@ -25,7 +25,7 @@ export function NordikAttribution({
         )}
         aria-label="Visit NORDIK Institute"
       >
-        <span>In partnership with</span>
+        <span>Developed by</span>
         <Image
           src="/images/logos/nordik.png"
           alt="NORDIK Institute"
@@ -41,7 +41,7 @@ export function NordikAttribution({
     return (
       <div className={cn("flex flex-col items-start gap-2", className)}>
         <span className="text-xs uppercase tracking-wider text-ink-500">
-          In partnership with
+          Developed by
         </span>
         <Link
           href="https://nordikinstitute.com"

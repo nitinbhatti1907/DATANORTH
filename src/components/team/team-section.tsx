@@ -25,6 +25,12 @@ const TEAM: TeamMember[] = [
     linkedin: "https://www.linkedin.com/in/ahmedtariqaziz/",
   },
   {
+    name: "Dr. Zamilur Rahman",
+    role: "Research Associate, NORDIK Institute",
+    affiliation: "Assistant Professor, Department of Computer Science & Mathematics, Algoma University",
+    linkedin: "https://www.linkedin.com/in/zamiljitu/",
+  },
+  {
     name: "Dr. Muhammad Azam",
     role: "Research Associate, NORDIK Institute",
     affiliation:
@@ -41,7 +47,7 @@ const TEAM: TeamMember[] = [
   {
     name: "Nitin Bhatti",
     role: "Project Developer",
-    affiliation: "Data Analyst Volunteer, NORDIK Institute",
+    affiliation: "Data Analyst Intern, NORDIK Institute",
     linkedin: "https://www.linkedin.com/in/bhattinitin/",
   },
 ];
@@ -99,25 +105,13 @@ export function TeamSection() {
           - mobile: 1 column
           - sm: 2 columns (last card spans both)
           - lg: 3 columns top row, then last 2 centered below */}
-      <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-6">
-        {TEAM.map((m, idx) => {
+      {/* 6-member layout: 3 columns × 2 rows on desktop, 2 columns on tablet, 1 on mobile */}
+      <ul className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {TEAM.map((m) => {
           const [c1, c2] = gradientFor(m.name);
 
-          // On the lg breakpoint, place the first 3 cards as cols 1-2, 3-4, 5-6
-          // and the last 2 cards as cols 2-3, 4-5 (centered).
-          const lgPlacement =
-            idx === 0
-              ? "lg:col-span-2 lg:col-start-1"
-              : idx === 1
-                ? "lg:col-span-2 lg:col-start-3"
-                : idx === 2
-                  ? "lg:col-span-2 lg:col-start-5"
-                  : idx === 3
-                    ? "lg:col-span-2 lg:col-start-2"
-                    : "lg:col-span-2 lg:col-start-4";
-
           return (
-            <li key={m.name} className={lgPlacement}>
+            <li key={m.name}>
               <div className="group relative h-full overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elev-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-elev-3">
                 {/* Accent bar at top */}
                 <div

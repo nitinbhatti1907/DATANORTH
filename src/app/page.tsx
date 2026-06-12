@@ -116,7 +116,7 @@ export default function HomePage() {
         <div className="content-container py-12">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
-              In partnership with
+              Developed by
             </div>
             <div className="flex flex-wrap items-center justify-center gap-8">
               <a
