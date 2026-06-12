@@ -70,7 +70,7 @@ export function Hero() {
               className="inline-flex h-11 items-center gap-2 rounded-md border border-ink-200 bg-white px-5 text-sm font-medium text-ink-800 shadow-elev-1 transition-colors hover:border-ink-300"
             >
               <MapPin className="h-4 w-4" aria-hidden />
-              Sault Ste. Marie profile
+              Sault Ste. Marie Profile
             </Link>
           </div>
 
