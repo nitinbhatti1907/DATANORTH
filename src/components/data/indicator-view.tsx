@@ -1,17 +1,10 @@
 "use client";
 
-import {
-  useMemo,
-  useState,
-  useCallback,
-  useEffect,
-  useTransition,
-} from "react";
+import { useState, useCallback, useEffect, useTransition } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChartPanel } from "@/components/data/chart-panel";
 import { FilterBar } from "@/components/data/filter-bar";
-import type { Indicator } from "@/types";
-import { queryChartData } from "@/lib/query";
+import type { ChartDataResponse, Indicator } from "@/types";
 
 export function IndicatorView({
   indicator,
@@ -36,6 +29,8 @@ export function IndicatorView({
   const [yearTo, setYearTo] = useState<number | undefined>(
     initialTo ? Number(initialTo) : undefined,
   );
+  const [chartData, setChartData] = useState<ChartDataResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -68,16 +63,28 @@ export function IndicatorView({
     [],
   );
 
-  const chartData = useMemo(
-    () =>
-      queryChartData({
-        indicatorSlug: indicator.slug,
-        geographies,
-        yearFrom,
-        yearTo,
-      }),
-    [indicator.slug, geographies, yearFrom, yearTo],
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ indicator: indicator.slug });
+    if (geographies.length) params.set("geo", geographies.join(","));
+    if (yearFrom != null) params.set("from", String(yearFrom));
+    if (yearTo != null) params.set("to", String(yearTo));
+
+    setLoading(true);
+    fetch(`/api/chart-data?${params.toString()}`, {
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ChartDataResponse | null) => setChartData(data))
+      .catch((error) => {
+        if (error.name !== "AbortError") setChartData(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [indicator.slug, geographies, yearFrom, yearTo]);
 
   const isComposition = indicator.shape === "composition";
 
@@ -99,7 +106,11 @@ export function IndicatorView({
         />
       </div>
       <div className="mt-6">
-        {hasData ? (
+        {loading ? (
+          <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">
+            Loading data...
+          </div>
+        ) : hasData ? (
           <ChartPanel data={chartData!} height={420} />
         ) : (
           <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">

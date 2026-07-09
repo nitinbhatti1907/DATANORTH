@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { GEOGRAPHIES } from "@/lib/data/geographies";
+import { getGeographiesRepository } from "@/lib/server/data-repository";
 
 export async function GET() {
+  const geographies = await getGeographiesRepository();
   return NextResponse.json({
-    geographies: GEOGRAPHIES,
-    count: GEOGRAPHIES.length,
+    geographies,
+    count: geographies.length,
   });
 }

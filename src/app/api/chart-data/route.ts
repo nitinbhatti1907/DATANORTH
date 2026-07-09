@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryChartData } from "@/lib/query";
+import { queryChartDataRepository } from "@/lib/server/data-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  const data = queryChartData({
+  const data = await queryChartDataRepository({
     indicatorSlug: slug,
     geographies,
     yearFrom: from ? Number(from) : undefined,
