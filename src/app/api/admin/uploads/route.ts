@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/server/admin-auth";
+import { getAdminSession } from "@/lib/server/admin-auth";
 import {
   ingestUpload,
   parseUploadFile,
@@ -8,13 +8,21 @@ import {
 import { getUploadHistoryRepository } from "@/lib/server/data-repository";
 
 export async function GET() {
-  await requireAdminSession();
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const uploads = await getUploadHistoryRepository();
   return NextResponse.json({ uploads });
 }
 
 export async function POST(req: Request) {
-  const session = await requireAdminSession();
+  const session = await getAdminSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   const form = await req.formData();
   const file = form.get("file");
 
@@ -56,7 +64,7 @@ export async function POST(req: Request) {
       file,
       rawRows,
       rows: validation.rows,
-      uploadedBy: session.userId,
+      uploadedBy: session.email ?? session.userId,
       category,
       indicatorSlug,
       geographyCode,
