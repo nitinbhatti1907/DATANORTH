@@ -2,16 +2,15 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
-import { IndicatorCard } from "@/components/cards/indicator-card";
 import { KPIStrip, type KPITileData } from "@/components/data/kpi-strip";
-import { CategoryDashboard } from "@/components/data/category-dashboard";
-import { CategoryViewToggle } from "@/components/data/view-toggle";
 import { CATEGORY_LIST, getCategory } from "@/lib/data/categories";
-import { getIndicatorsByCategory } from "@/lib/data/indicators";
-import { getLatestValue } from "@/lib/query";
+import {
+  getIndicatorsRepository,
+  getLatestValueRepository,
+} from "@/lib/server/data-repository";
 import { ArrowLeft } from "lucide-react";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -41,22 +40,23 @@ export default async function CategoryPage({
   const category = getCategory(slug);
   if (!category) notFound();
 
-  const indicators = getIndicatorsByCategory(slug);
-  const tiles: KPITileData[] = indicators
-    .flatMap<KPITileData>((ind) => {
-      const latest = getLatestValue(ind.slug, "SSM");
-      if (!latest) return [];
-      return [
-        {
+  const allIndicators = await getIndicatorsRepository();
+  const indicators = allIndicators.filter((indicator) => indicator.category === slug);
+  const tiles = (
+    await Promise.all(
+      indicators.map(async (ind): Promise<KPITileData | null> => {
+        const latest = await getLatestValueRepository(ind.slug, "SSM");
+        if (!latest) return null;
+        return {
           indicator: ind,
           latest: latest.value,
           previous: latest.previous,
           latestYear: latest.year,
           href: `/indicators/${ind.slug}?geo=SSM`,
-        },
-      ];
-    })
-    .slice(0, 4);
+        };
+      }),
+    )
+  ).filter((tile): tile is KPITileData => Boolean(tile)).slice(0, 4);
 
   return (
     <>

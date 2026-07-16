@@ -23,7 +23,7 @@ export const INDICATORS: Indicator[] = [
     updateFrequency: "Irregular",
     lastUpdated: "2022-02-09",
     featured: true,
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "median-age",
@@ -38,7 +38,7 @@ export const INDICATORS: Indicator[] = [
     license: "Statistics Canada Open Licence",
     updateFrequency: "Irregular",
     lastUpdated: "2022-04-27",
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "population-growth-rate",
@@ -53,7 +53,7 @@ export const INDICATORS: Indicator[] = [
     license: "Statistics Canada Open Licence",
     updateFrequency: "Annual",
     lastUpdated: "2024-01-11",
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "household-size",
@@ -84,7 +84,7 @@ export const INDICATORS: Indicator[] = [
     updateFrequency: "Irregular",
     lastUpdated: "2022-04-27",
     featured: true,
-    isSample: true,
+    isSample: false,
     shape: "composition",
     compositionCategories: ["0–14", "15–24", "25–44", "45–64", "65+"],
   },
@@ -104,7 +104,7 @@ export const INDICATORS: Indicator[] = [
     updateFrequency: "Annual",
     lastUpdated: "2024-07-15",
     featured: true,
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "business-count",
@@ -134,7 +134,7 @@ export const INDICATORS: Indicator[] = [
     license: "Statistics Canada Open Licence",
     updateFrequency: "Annual",
     lastUpdated: "2024-07-15",
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "gdp-per-capita",
@@ -352,7 +352,7 @@ export const INDICATORS: Indicator[] = [
     license: "Placeholder — real dataset to be ingested",
     updateFrequency: "Irregular",
     lastUpdated: "2022-09-21",
-    isSample: true,
+    isSample: false,
   },
   {
     slug: "housing-tenure",
@@ -704,7 +704,7 @@ export const INDICATORS: Indicator[] = [
     updateFrequency: "Irregular",
     lastUpdated: "2022-10-26",
     featured: true,
-    isSample: true,
+    isSample: false,
     shape: "composition",
     compositionCategories: [
       "Europe",

@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChartPanel } from "@/components/data/chart-panel";
 import { FilterBar } from "@/components/data/filter-bar";
 import { KPITile, type KPITileData } from "@/components/data/kpi-strip";
-import { queryChartData, getAvailableYears, getLatestValue } from "@/lib/query";
 import type { Category, Indicator, ChartDataResponse } from "@/types";
 
 type Variant = "comparison" | "composition-led" | "snapshot" | "index";
@@ -61,6 +60,8 @@ export function CategoryDashboard({
   const [yearTo, setYearTo] = useState<number | undefined>(
     initialTo ? Number(initialTo) : undefined,
   );
+  const [charts, setCharts] = useState<ChartItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
@@ -84,50 +85,75 @@ export function CategoryDashboard({
     [],
   );
 
-  // Available years across timeseries indicators in this category
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCharts() {
+      setLoading(true);
+      const results = await Promise.all(
+        indicators.map(async (ind) => {
+          const params = new URLSearchParams({ indicator: ind.slug });
+          if (geographies.length) params.set("geo", geographies.join(","));
+          if (ind.shape !== "composition") {
+            if (yearFrom != null) params.set("from", String(yearFrom));
+            if (yearTo != null) params.set("to", String(yearTo));
+          }
+
+          const response = await fetch(`/api/chart-data?${params.toString()}`, {
+            signal: controller.signal,
+          });
+          if (!response.ok) return null;
+          const data = (await response.json()) as ChartDataResponse;
+          return { indicator: data.indicator, data };
+        }),
+      );
+
+      if (!controller.signal.aborted) {
+        setCharts(results.filter(Boolean) as ChartItem[]);
+        setLoading(false);
+      }
+    }
+
+    loadCharts().catch((error) => {
+      if (!controller.signal.aborted) {
+        console.error(error);
+        setCharts([]);
+        setLoading(false);
+      }
+    });
+
+    return () => controller.abort();
+  }, [indicators, geographies, yearFrom, yearTo]);
+
   const availableYears = useMemo(() => {
     const set = new Set<number>();
-    for (const ind of indicators) {
-      if (ind.shape === "composition") continue;
-      for (const y of getAvailableYears(ind.slug)) set.add(y);
+    for (const chart of charts) {
+      if (chart.data.shape !== "timeseries") continue;
+      for (const series of chart.data.series ?? []) {
+        for (const point of series.points) set.add(point.year);
+      }
     }
     return Array.from(set).sort((a, b) => a - b);
-  }, [indicators]);
+  }, [charts]);
 
   // KPI tiles for snapshot/index layouts
   const tiles: KPITileData[] = useMemo(() => {
-    return indicators
-      .flatMap<KPITileData>((ind) => {
-        const latest = getLatestValue(ind.slug, geographies[0] ?? "SSM");
+    return charts
+      .flatMap<KPITileData>((chart) => {
+        const latest = getLatestValueFromChart(chart.data, geographies[0] ?? "SSM");
         if (!latest) return [];
         return [
           {
-            indicator: ind,
+            indicator: chart.indicator,
             latest: latest.value,
             previous: latest.previous,
             latestYear: latest.year,
-            href: `/indicators/${ind.slug}?geo=${geographies[0] ?? "SSM"}`,
+            href: `/indicators/${chart.indicator.slug}?geo=${geographies[0] ?? "SSM"}`,
           },
         ];
       })
       .slice(0, 4);
-  }, [indicators, geographies]);
-
-  // Data for every indicator in this category
-  const charts = useMemo(() => {
-    return indicators.map((ind) => ({
-      indicator: ind,
-      data: queryChartData({
-        indicatorSlug: ind.slug,
-        geographies,
-        yearFrom: ind.shape === "composition" ? undefined : yearFrom,
-        yearTo: ind.shape === "composition" ? undefined : yearTo,
-      }),
-    })).filter((c) => c.data) as Array<{
-      indicator: Indicator;
-      data: ChartDataResponse;
-    }>;
-  }, [indicators, geographies, yearFrom, yearTo]);
+  }, [charts, geographies]);
 
   const heroChart = layout.hero
     ? charts.find((c) => c.indicator.slug === layout.hero)
@@ -151,22 +177,28 @@ export function CategoryDashboard({
         </p>
       </div>
 
+      {loading && (
+        <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">
+          Loading data...
+        </div>
+      )}
+
       {/* Layout dispatch */}
-      {layout.variant === "comparison" && (
+      {!loading && layout.variant === "comparison" && (
         <ComparisonLayout
           accent={category.accent}
           hero={heroChart}
           rest={restCharts}
         />
       )}
-      {layout.variant === "composition-led" && (
+      {!loading && layout.variant === "composition-led" && (
         <CompositionLedLayout
           accent={category.accent}
           hero={heroChart}
           rest={restCharts}
         />
       )}
-      {layout.variant === "snapshot" && (
+      {!loading && layout.variant === "snapshot" && (
         <SnapshotLayout
           accent={category.accent}
           tiles={tiles}
@@ -174,7 +206,7 @@ export function CategoryDashboard({
           rest={restCharts}
         />
       )}
-      {layout.variant === "index" && (
+      {!loading && layout.variant === "index" && (
         <IndexLayout
           accent={category.accent}
           tiles={tiles}
@@ -188,6 +220,32 @@ export function CategoryDashboard({
 /* =================== LAYOUTS =================== */
 
 type ChartItem = { indicator: Indicator; data: ChartDataResponse };
+
+function getLatestValueFromChart(
+  data: ChartDataResponse,
+  geographyCode: string,
+): { value: number; year: number; previous?: number } | null {
+  if (data.shape === "composition") {
+    const composition = data.composition?.find(
+      (series) => series.geographyCode === geographyCode,
+    );
+    if (!composition?.parts.length) return null;
+    const top = [...composition.parts].sort((a, b) => b.value - a.value)[0];
+    if (top.value == null) return null;
+    return { value: top.value, year: composition.year };
+  }
+
+  const series = data.series?.find((item) => item.geographyCode === geographyCode);
+  if (!series?.points.length) return null;
+  const points = [...series.points].sort((a, b) => b.year - a.year);
+  const latest = points[0];
+  if (latest.value == null) return null;
+  return {
+    value: latest.value,
+    year: latest.year,
+    previous: points[1]?.value ?? undefined,
+  };
+}
 
 // (1) COMPARISON — wide hero trend, then 2-col grid
 function ComparisonLayout({
