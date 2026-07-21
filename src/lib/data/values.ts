@@ -565,21 +565,15 @@ export function generateValues(): IndicatorValue[] {
 const OFFICIAL_AVERAGE_DWELLING_VALUES: IndicatorValue[] = [
   {
     indicatorSlug: "average-home-price",
-    geographyCode: "ELLIOT-LAKE",
-    year: 2021,
-    value: 186400,
+    geographyCode: "ON",
+    year: 2011,
+    value: 367428,
   },
   {
     indicatorSlug: "average-home-price",
-    geographyCode: "KENORA",
-    year: 2021,
-    value: 340400,
-  },
-  {
-    indicatorSlug: "average-home-price",
-    geographyCode: "NORTH-BAY",
-    year: 2021,
-    value: 351600,
+    geographyCode: "ON",
+    year: 2016,
+    value: 506409,
   },
   {
     indicatorSlug: "average-home-price",
@@ -590,8 +584,32 @@ const OFFICIAL_AVERAGE_DWELLING_VALUES: IndicatorValue[] = [
   {
     indicatorSlug: "average-home-price",
     geographyCode: "SSM",
+    year: 2011,
+    value: 189204,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SSM",
+    year: 2016,
+    value: 235086,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SSM",
     year: 2021,
     value: 282800,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SUDBURY",
+    year: 2011,
+    value: 250513,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SUDBURY",
+    year: 2016,
+    value: 298842,
   },
   {
     indicatorSlug: "average-home-price",
@@ -602,14 +620,92 @@ const OFFICIAL_AVERAGE_DWELLING_VALUES: IndicatorValue[] = [
   {
     indicatorSlug: "average-home-price",
     geographyCode: "THUNDER-BAY",
+    year: 2011,
+    value: 179768,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "THUNDER-BAY",
+    year: 2016,
+    value: 252159,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "THUNDER-BAY",
     year: 2021,
     value: 317200,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "NORTH-BAY",
+    year: 2011,
+    value: 251356,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "NORTH-BAY",
+    year: 2016,
+    value: 271508,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "NORTH-BAY",
+    year: 2021,
+    value: 351600,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "TIMMINS",
+    year: 2011,
+    value: 185108,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "TIMMINS",
+    year: 2016,
+    value: 227577,
   },
   {
     indicatorSlug: "average-home-price",
     geographyCode: "TIMMINS",
     year: 2021,
     value: 252000,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "KENORA",
+    year: 2011,
+    value: 203588,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "KENORA",
+    year: 2016,
+    value: 260789,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "KENORA",
+    year: 2021,
+    value: 340400,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "ELLIOT-LAKE",
+    year: 2011,
+    value: 113186,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "ELLIOT-LAKE",
+    year: 2016,
+    value: 125325,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "ELLIOT-LAKE",
+    year: 2021,
+    value: 186400,
   },
 ];
 
