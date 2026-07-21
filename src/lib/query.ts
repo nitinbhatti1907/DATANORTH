@@ -38,8 +38,14 @@ export function queryChartData(params: {
     >();
     for (const r of rows) {
       if (!geoFilter.includes(r.geographyCode)) continue;
-      const entry = byGeo.get(r.geographyCode) ?? { year: r.year, parts: [] };
-      entry.parts.push({ label: r.label, value: r.value });
+      const existing = byGeo.get(r.geographyCode);
+      const entry =
+        !existing || r.year > existing.year
+          ? { year: r.year, parts: [] }
+          : existing;
+      if (r.year === entry.year) {
+        entry.parts.push({ label: r.label, value: r.value });
+      }
       byGeo.set(r.geographyCode, entry);
     }
 
@@ -99,8 +105,7 @@ export function queryChartData(params: {
       points: points.sort((a, b) => a.year - b.year),
     }))
     .sort(
-      (a, b) =>
-        (ORDER[a.geographyCode] ?? 50) - (ORDER[b.geographyCode] ?? 50),
+      (a, b) => (ORDER[a.geographyCode] ?? 50) - (ORDER[b.geographyCode] ?? 50),
     );
 
   return {
@@ -141,8 +146,7 @@ export function getLatestValue(
   if (shape === "composition") {
     const rows = COMPOSITION_VALUES.filter(
       (v) =>
-        v.indicatorSlug === indicatorSlug &&
-        v.geographyCode === geographyCode,
+        v.indicatorSlug === indicatorSlug && v.geographyCode === geographyCode,
     );
     if (rows.length === 0) return null;
     const top = [...rows].sort((a, b) => b.value - a.value)[0];

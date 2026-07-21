@@ -1,12 +1,4 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gte,
-  inArray,
-  lte,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb, hasDatabaseConfig } from "@/db/client";
 import {
   dataUploads,
@@ -103,7 +95,10 @@ export async function getIndicatorsRepository(): Promise<Indicator[]> {
 
 export async function getGeographiesRepository(): Promise<Geography[]> {
   if (!hasDatabaseConfig()) return GEOGRAPHIES;
-  const rows = await getDb().select().from(dbGeographies).orderBy(asc(dbGeographies.code));
+  const rows = await getDb()
+    .select()
+    .from(dbGeographies)
+    .orderBy(asc(dbGeographies.code));
   return rows.map(toGeography);
 }
 
@@ -161,11 +156,14 @@ export async function queryChartDataRepository(params: {
 
     for (const row of rows) {
       const label = row.label ?? "Value";
-      const entry = grouped.get(row.geographyCode) ?? {
-        year: row.year,
-        parts: [],
-      };
-      entry.parts.push({ label, value: Number(row.value) });
+      const existing = grouped.get(row.geographyCode);
+      const entry =
+        !existing || row.year > existing.year
+          ? { year: row.year, parts: [] }
+          : existing;
+      if (row.year === entry.year) {
+        entry.parts.push({ label, value: Number(row.value) });
+      }
       grouped.set(row.geographyCode, entry);
     }
 
