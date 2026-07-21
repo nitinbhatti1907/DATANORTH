@@ -184,14 +184,6 @@ const SEEDS: Seed[] = [
     },
     { includeOntario: true },
   ),
-  ...spread("average-home-price", 180000, 22000, 6000, {
-    SUDBURY: { b: 1.33 },
-    "THUNDER-BAY": { b: 1.17 },
-    "NORTH-BAY": { b: 1.22 },
-    TIMMINS: { b: 1.05 },
-    KENORA: { b: 1.0 },
-    "NORTHERN-ON": { b: 1.17 },
-  }),
   ...spread(
     "housing-starts",
     110,
@@ -570,6 +562,57 @@ export function generateValues(): IndicatorValue[] {
   return values;
 }
 
+const OFFICIAL_AVERAGE_DWELLING_VALUES: IndicatorValue[] = [
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "ELLIOT-LAKE",
+    year: 2021,
+    value: 186400,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "KENORA",
+    year: 2021,
+    value: 340400,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "NORTH-BAY",
+    year: 2021,
+    value: 351600,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "ON",
+    year: 2021,
+    value: 807000,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SSM",
+    year: 2021,
+    value: 282800,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "SUDBURY",
+    year: 2021,
+    value: 379600,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "THUNDER-BAY",
+    year: 2021,
+    value: 317200,
+  },
+  {
+    indicatorSlug: "average-home-price",
+    geographyCode: "TIMMINS",
+    year: 2021,
+    value: 252000,
+  },
+];
+
 const OFFICIAL_INDICATOR_VALUES: IndicatorValue[] = [
   {
     indicatorSlug: "household-size",
@@ -624,6 +667,7 @@ const OFFICIAL_INDICATOR_VALUES: IndicatorValue[] = [
 export const INDICATOR_VALUES = [
   ...generateValues(),
   ...OFFICIAL_INDICATOR_VALUES,
+  ...OFFICIAL_AVERAGE_DWELLING_VALUES,
 ];
 
 type CompositionTilt = Partial<Record<string, number[]>>;
