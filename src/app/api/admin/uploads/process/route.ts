@@ -37,6 +37,7 @@ export async function POST(req: Request) {
         error: "Raw file could not be converted into the required format.",
         errors: processed.errors.slice(0, 50),
         warnings: processed.warnings,
+        summary: processed.summary,
       },
       { status: 400 },
     );
@@ -49,5 +50,6 @@ export async function POST(req: Request) {
     preview: processed.rows.slice(0, 10),
     csv: processed.csv,
     warnings: processed.warnings,
+    summary: processed.summary,
   });
 }

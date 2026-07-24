@@ -13,6 +13,18 @@ type PreviewRow = {
   label?: string;
 };
 
+type ProcessSummary = {
+  filesProcessed: number;
+  rawRowsRead: number;
+  candidateRows: number;
+  processedRows: number;
+  skippedRows: number;
+  exactDuplicateRows: number;
+  conflictRows: number;
+  geographies: string[];
+  years: number[];
+};
+
 type UploadState =
   | { status: "idle" }
   | { status: "working"; message: string }
@@ -22,7 +34,13 @@ type UploadState =
       preview: PreviewRow[];
       warnings?: string[];
     }
-  | { status: "processed"; rowCount: number; preview: PreviewRow[]; warnings: string[] }
+  | {
+      status: "processed";
+      rowCount: number;
+      preview: PreviewRow[];
+      warnings: string[];
+      summary?: ProcessSummary;
+    }
   | { status: "success"; message: string }
   | { status: "error"; message: string; errors?: string[] };
 
@@ -50,11 +68,13 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
   function updateCategory(value: string) {
     setCategorySlug(value);
     setIndicatorSlug("");
+    resetProcessedFile();
     resetImportValidation();
   }
 
   function updateIndicator(value: string) {
     setIndicatorSlug(value);
+    resetProcessedFile();
     resetImportValidation();
   }
 
@@ -72,6 +92,11 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     setState({ status: "idle" });
   }
 
+  function resetProcessedFile() {
+    setProcessedCsv("");
+    setProcessedFilename("");
+  }
+
   async function processRawFiles() {
     if (!categorySlug || !indicatorSlug) {
       setState({
@@ -87,7 +112,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     formData.set("category", categorySlug);
     formData.set("indicatorSlug", indicatorSlug);
 
-    setState({ status: "working", message: "Processing raw file..." });
+    setState({ status: "working", message: "Processing raw files..." });
     const res = await fetch("/api/admin/uploads/process", {
       method: "POST",
       body: formData,
@@ -110,6 +135,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
       rowCount: json.rowCount,
       preview: json.preview ?? [],
       warnings: json.warnings ?? [],
+      summary: json.summary,
     });
   }
 
@@ -259,7 +285,8 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
             <button
               type="button"
               onClick={() => void processRawFiles()}
-              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!categorySlug || !indicatorSlug}
             >
               <RefreshCw className="h-4 w-4" aria-hidden />
               Process
@@ -447,6 +474,9 @@ function Status({ state }: { state: UploadState }) {
         {state.status === "processed" ? "Processed file" : "Valid file"}:{" "}
         {state.rowCount} rows
       </p>
+      {state.status === "processed" && state.summary ? (
+        <ProcessSummaryBlock summary={state.summary} />
+      ) : null}
       {state.warnings?.length ? (
         <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
           <p className="font-medium">Warnings</p>
@@ -483,6 +513,40 @@ function Status({ state }: { state: UploadState }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ProcessSummaryBlock({ summary }: { summary: ProcessSummary }) {
+  return (
+    <dl className="mt-3 grid grid-cols-2 gap-2 rounded-md border border-ink-200 bg-ink-50 p-3 text-xs text-ink-700">
+      <SummaryItem label="Files" value={summary.filesProcessed} />
+      <SummaryItem label="Raw rows" value={summary.rawRowsRead} />
+      <SummaryItem label="Candidates" value={summary.candidateRows} />
+      <SummaryItem label="Processed" value={summary.processedRows} />
+      <SummaryItem label="Skipped" value={summary.skippedRows} />
+      <SummaryItem label="Duplicates" value={summary.exactDuplicateRows} />
+      <div className="col-span-2">
+        <dt className="font-medium uppercase tracking-wide text-ink-500">Geographies</dt>
+        <dd className="mt-1 break-words text-ink-900">
+          {summary.geographies.length ? summary.geographies.join(", ") : "None"}
+        </dd>
+      </div>
+      <div className="col-span-2">
+        <dt className="font-medium uppercase tracking-wide text-ink-500">Years</dt>
+        <dd className="mt-1 break-words text-ink-900">
+          {summary.years.length ? summary.years.join(", ") : "None"}
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <dt className="font-medium uppercase tracking-wide text-ink-500">{label}</dt>
+      <dd className="mt-1 font-medium text-ink-900">{value}</dd>
     </div>
   );
 }
