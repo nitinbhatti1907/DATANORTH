@@ -35,6 +35,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
   const [state, setState] = useState<UploadState>({ status: "idle" });
   const [processedCsv, setProcessedCsv] = useState("");
   const [processedFilename, setProcessedFilename] = useState("");
+  const [hasImportFile, setHasImportFile] = useState(false);
 
   const filteredIndicators = useMemo(() => {
     if (!categorySlug) return [];
@@ -49,6 +50,25 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
   function updateCategory(value: string) {
     setCategorySlug(value);
     setIndicatorSlug("");
+    resetImportValidation();
+  }
+
+  function updateIndicator(value: string) {
+    setIndicatorSlug(value);
+    resetImportValidation();
+  }
+
+  function updateImportMode(value: ImportMode) {
+    setImportMode(value);
+    resetImportValidation();
+  }
+
+  function updateImportFile(files: FileList | null) {
+    setHasImportFile(Boolean(files?.length));
+    resetImportValidation();
+  }
+
+  function resetImportValidation() {
     setState({ status: "idle" });
   }
 
@@ -199,7 +219,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               <select
                 name="indicatorSlug"
                 value={indicatorSlug}
-                onChange={(event) => setIndicatorSlug(event.target.value)}
+                onChange={(event) => updateIndicator(event.target.value)}
                 className="field-control"
                 disabled={!categorySlug}
               >
@@ -303,7 +323,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               <select
                 name="importMode"
                 value={importMode}
-                onChange={(event) => setImportMode(event.target.value as ImportMode)}
+                onChange={(event) => updateImportMode(event.target.value as ImportMode)}
                 className="field-control"
               >
                 <option value="extend">Extend current data</option>
@@ -317,6 +337,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
                 accept=".csv,.xlsx,.xls"
                 required
                 className="field-control"
+                onChange={(event) => updateImportFile(event.target.files)}
               />
             </Field>
           </div>
@@ -333,7 +354,8 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
             <button
               type="button"
               onClick={() => void submit("validate")}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!categorySlug || !indicatorSlug || !hasImportFile}
             >
               <FileCheck className="h-4 w-4" aria-hidden />
               Validate file
@@ -341,7 +363,8 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
             <button
               type="button"
               onClick={() => void submit("ingest")}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-nordik-700 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-nordik-800"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-nordik-700 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-nordik-800 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={state.status !== "valid"}
             >
               <Upload className="h-4 w-4" aria-hidden />
               Import to database
