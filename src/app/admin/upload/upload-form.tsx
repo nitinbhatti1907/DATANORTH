@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Upload } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Download, FileCheck, RefreshCw, Upload } from "lucide-react";
 import { CATEGORY_LIST } from "@/lib/data/categories";
-import type { Geography, Indicator } from "@/types";
+import type { Indicator } from "@/types";
 
 type PreviewRow = {
   indicator_slug: string;
@@ -15,27 +15,105 @@ type PreviewRow = {
 
 type UploadState =
   | { status: "idle" }
-  | { status: "working" }
-  | { status: "valid"; rowCount: number; preview: PreviewRow[] }
+  | { status: "working"; message: string }
+  | {
+      status: "valid";
+      rowCount: number;
+      preview: PreviewRow[];
+      warnings?: string[];
+    }
+  | { status: "processed"; rowCount: number; preview: PreviewRow[]; warnings: string[] }
   | { status: "success"; message: string }
   | { status: "error"; message: string; errors?: string[] };
 
-export function UploadForm({
-  indicators,
-  geographies,
-}: {
-  indicators: Indicator[];
-  geographies: Geography[];
-}) {
+type ImportMode = "replace" | "extend";
+
+export function UploadForm({ indicators }: { indicators: Indicator[] }) {
+  const [categorySlug, setCategorySlug] = useState("");
+  const [indicatorSlug, setIndicatorSlug] = useState("");
+  const [importMode, setImportMode] = useState<ImportMode>("extend");
   const [state, setState] = useState<UploadState>({ status: "idle" });
+  const [processedCsv, setProcessedCsv] = useState("");
+  const [processedFilename, setProcessedFilename] = useState("");
+
+  const filteredIndicators = useMemo(() => {
+    if (!categorySlug) return [];
+    return indicators.filter((indicator) => indicator.category === categorySlug);
+  }, [categorySlug, indicators]);
+
+  const selectedIndicator = useMemo(
+    () => indicators.find((indicator) => indicator.slug === indicatorSlug),
+    [indicatorSlug, indicators],
+  );
+
+  function updateCategory(value: string) {
+    setCategorySlug(value);
+    setIndicatorSlug("");
+    setState({ status: "idle" });
+  }
+
+  async function processRawFiles() {
+    if (!categorySlug || !indicatorSlug) {
+      setState({
+        status: "error",
+        message: "Select a category and indicator before processing raw files.",
+      });
+      return;
+    }
+
+    const form = document.querySelector<HTMLFormElement>("#admin-raw-process-form");
+    if (!form) return;
+    const formData = new FormData(form);
+    formData.set("category", categorySlug);
+    formData.set("indicatorSlug", indicatorSlug);
+
+    setState({ status: "working", message: "Processing raw file..." });
+    const res = await fetch("/api/admin/uploads/process", {
+      method: "POST",
+      body: formData,
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      setState({
+        status: "error",
+        message: json.error ?? "Raw file processing failed.",
+        errors: json.errors,
+      });
+      return;
+    }
+
+    setProcessedCsv(json.csv ?? "");
+    setProcessedFilename(json.filename ?? `${indicatorSlug}_processed.csv`);
+    setState({
+      status: "processed",
+      rowCount: json.rowCount,
+      preview: json.preview ?? [],
+      warnings: json.warnings ?? [],
+    });
+  }
 
   async function submit(mode: "validate" | "ingest") {
+    if (!categorySlug || !indicatorSlug) {
+      setState({
+        status: "error",
+        message: "Select a category and indicator before importing data.",
+      });
+      return;
+    }
+
     const form = document.querySelector<HTMLFormElement>("#admin-upload-form");
     if (!form) return;
     const formData = new FormData(form);
     formData.set("mode", mode);
+    formData.set("category", categorySlug);
+    formData.set("indicatorSlug", indicatorSlug);
+    formData.set("importMode", importMode);
 
-    setState({ status: "working" });
+    setState({
+      status: "working",
+      message: mode === "validate" ? "Validating processed file..." : "Importing data...",
+    });
     const res = await fetch("/api/admin/uploads", {
       method: "POST",
       body: formData,
@@ -56,91 +134,221 @@ export function UploadForm({
         status: "valid",
         rowCount: json.rowCount,
         preview: json.preview ?? [],
+        warnings: json.warnings,
       });
       return;
     }
 
     setState({
       status: "success",
-      message: `Imported ${json.upload?.rowCount ?? 0} rows.`,
+      message: `Imported ${json.upload?.rowCount ?? 0} rows using ${importMode} mode.`,
     });
   }
 
+  function downloadProcessedCsv() {
+    if (!processedCsv) return;
+    downloadTextFile(processedFilename, processedCsv);
+  }
+
+  async function downloadCurrentBackup() {
+    if (!indicatorSlug) {
+      setState({
+        status: "error",
+        message: "Select an indicator before downloading a backup.",
+      });
+      return;
+    }
+
+    const res = await fetch(
+      `/api/admin/uploads?action=backup&indicatorSlug=${encodeURIComponent(indicatorSlug)}`,
+    );
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      setState({
+        status: "error",
+        message: json.error ?? "Could not download current indicator backup.",
+      });
+      return;
+    }
+
+    const csv = await res.text();
+    downloadTextFile(`${indicatorSlug}_current_backup.csv`, csv);
+  }
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-      <form
-        id="admin-upload-form"
-        className="rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1"
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Category">
-            <select name="category" className="field-control">
-              <option value="">Select category</option>
-              {CATEGORY_LIST.map((category) => (
-                <option key={category.slug} value={category.slug}>
-                  {category.name}
+    <div className="grid gap-6 xl:grid-cols-[1fr_0.55fr]">
+      <div className="space-y-6">
+        <section className="rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Category">
+              <select
+                name="category"
+                value={categorySlug}
+                onChange={(event) => updateCategory(event.target.value)}
+                className="field-control"
+              >
+                <option value="">Select category</option>
+                {CATEGORY_LIST.map((category) => (
+                  <option key={category.slug} value={category.slug}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Indicator">
+              <select
+                name="indicatorSlug"
+                value={indicatorSlug}
+                onChange={(event) => setIndicatorSlug(event.target.value)}
+                className="field-control"
+                disabled={!categorySlug}
+              >
+                <option value="">
+                  {categorySlug ? "Select indicator" : "Select category first"}
                 </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Indicator default">
-            <select name="indicatorSlug" className="field-control">
-              <option value="">Use file column</option>
-              {indicators.map((indicator) => (
-                <option key={indicator.slug} value={indicator.slug}>
-                  {indicator.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Geography default">
-            <select name="geographyCode" className="field-control">
-              <option value="">Use file column</option>
-              {geographies.map((geography) => (
-                <option key={geography.code} value={geography.code}>
-                  {geography.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="CSV or Excel file">
-            <input
-              name="file"
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              required
-              className="field-control"
-            />
-          </Field>
-        </div>
+                {filteredIndicators.map((indicator) => (
+                  <option key={indicator.slug} value={indicator.slug}>
+                    {indicator.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          {selectedIndicator ? (
+            <p className="mt-3 text-sm text-ink-600">
+              Selected indicator:{" "}
+              <span className="font-medium text-ink-900">{selectedIndicator.name}</span>
+            </p>
+          ) : null}
+        </section>
 
-        <div className="mt-5 rounded-md border border-ink-200 bg-ink-50 p-4 text-sm text-ink-700">
-          Required columns: <code>indicator_slug</code>,{" "}
-          <code>geography_code</code>, <code>year</code>, <code>value</code>.
-          Optional columns: <code>label</code>, <code>quarter</code>,{" "}
-          <code>month</code>, <code>confidence_low</code>,{" "}
-          <code>confidence_high</code>, <code>is_forecast</code>,{" "}
-          <code>model_id</code>.
-        </div>
+        <form
+          id="admin-raw-process-form"
+          className="rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">
+                1. Prepare raw data
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-ink-600">
+                Upload source files first. The processor creates a standardized CSV
+                with the columns required by DATANORTH.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void processRawFiles()}
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Process
+            </button>
+          </div>
+          <div className="mt-5">
+            <Field label="Raw CSV or Excel files">
+              <input
+                name="files"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                multiple
+                className="field-control"
+              />
+            </Field>
+          </div>
+          <div className="mt-4 rounded-md border border-ink-200 bg-ink-50 p-4 text-sm text-ink-700">
+            Best results come from files that include recognizable columns for
+            geography, year, and value. Indicator is added from the selected
+            indicator above.
+          </div>
+          {processedCsv ? (
+            <button
+              type="button"
+              onClick={downloadProcessedCsv}
+              className="mt-4 inline-flex h-10 items-center gap-2 rounded-md bg-ink-900 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-ink-800"
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Download processed CSV
+            </button>
+          ) : null}
+        </form>
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void submit("validate")}
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300"
-          >
-            Validate file
-          </button>
-          <button
-            type="button"
-            onClick={() => void submit("ingest")}
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-nordik-700 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-nordik-800"
-          >
-            <Upload className="h-4 w-4" aria-hidden />
-            Import to database
-          </button>
-        </div>
-      </form>
+        <form
+          id="admin-upload-form"
+          className="rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">
+                2. Import processed data
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-ink-600">
+                Validate the cleaned file, download the current indicator backup,
+                then choose how the import should affect current data.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void downloadCurrentBackup()}
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!indicatorSlug}
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Backup
+            </button>
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <Field label="Upload mode">
+              <select
+                name="importMode"
+                value={importMode}
+                onChange={(event) => setImportMode(event.target.value as ImportMode)}
+                className="field-control"
+              >
+                <option value="extend">Extend current data</option>
+                <option value="replace">Replace current data</option>
+              </select>
+            </Field>
+            <Field label="Processed CSV or Excel file">
+              <input
+                name="file"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                required
+                className="field-control"
+              />
+            </Field>
+          </div>
+
+          <div className="mt-5 rounded-md border border-ink-200 bg-ink-50 p-4 text-sm text-ink-700">
+            Required columns: <code>geography_code</code>, <code>year</code>,{" "}
+            <code>value</code>. Optional columns: <code>indicator_slug</code>,{" "}
+            <code>label</code>, <code>quarter</code>, <code>month</code>,{" "}
+            <code>confidence_low</code>, <code>confidence_high</code>,{" "}
+            <code>is_forecast</code>, <code>model_id</code>.
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => void submit("validate")}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 shadow-elev-1 hover:border-ink-300"
+            >
+              <FileCheck className="h-4 w-4" aria-hidden />
+              Validate file
+            </button>
+            <button
+              type="button"
+              onClick={() => void submit("ingest")}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-nordik-700 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-nordik-800"
+            >
+              <Upload className="h-4 w-4" aria-hidden />
+              Import to database
+            </button>
+          </div>
+        </form>
+      </div>
 
       <aside className="rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1">
         <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">
@@ -150,6 +358,18 @@ export function UploadForm({
       </aside>
     </div>
   );
+}
+
+function downloadTextFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 function Field({
@@ -173,13 +393,13 @@ function Status({ state }: { state: UploadState }) {
   if (state.status === "idle") {
     return (
       <p className="mt-3 text-sm leading-relaxed text-ink-600">
-        Choose a file and validate it before importing. Imports are blocked
-        until database credentials and `ADMIN_UPLOADS_ENABLED=true` are set.
+        Select a category and indicator, then process raw files or import a
+        reviewed processed file.
       </p>
     );
   }
   if (state.status === "working") {
-    return <p className="mt-3 text-sm text-ink-600">Working...</p>;
+    return <p className="mt-3 text-sm text-ink-600">{state.message}</p>;
   }
   if (state.status === "error") {
     return (
@@ -201,8 +421,19 @@ function Status({ state }: { state: UploadState }) {
   return (
     <div className="mt-3">
       <p className="text-sm font-medium text-emerald-700">
-        Valid file: {state.rowCount} rows
+        {state.status === "processed" ? "Processed file" : "Valid file"}:{" "}
+        {state.rowCount} rows
       </p>
+      {state.warnings?.length ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <p className="font-medium">Warnings</p>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {state.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="mt-4 overflow-x-auto">
         <table className="min-w-full text-xs">
           <thead>
