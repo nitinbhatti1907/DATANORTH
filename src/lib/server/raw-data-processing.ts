@@ -46,6 +46,16 @@ const COLUMN_ALIASES = {
   model_id: ["model_id", "model"],
 };
 
+const STATCAN_CSD_DGUID_TO_GEOGRAPHY: Record<string, string> = {
+  "2021A00053557061": "SSM",
+  "2021A00053553005": "SUDBURY",
+  "2021A00053558004": "THUNDER-BAY",
+  "2021A00053548044": "NORTH-BAY",
+  "2021A00053556027": "TIMMINS",
+  "2021A00053560010": "KENORA",
+  "2021A00053557041": "ELLIOT-LAKE",
+};
+
 export async function processRawIndicatorFiles(params: {
   files: File[];
   category?: string;
@@ -63,7 +73,9 @@ export async function processRawIndicatorFiles(params: {
 
     rawRows.forEach((raw, index) => {
       const normalized = normalizeRawRow(raw);
-      const transformed = transformRawRow(normalized, params.indicatorSlug);
+      const transformed =
+        transformStatCanMedianAgeRow(normalized, params.indicatorSlug) ??
+        transformRawRow(normalized, params.indicatorSlug);
       if (!transformed.geography_code || !transformed.year || !transformed.value) {
         warnings.push(
           `${file.name} row ${index + 2}: skipped because geography, year, or value could not be recognized.`,
@@ -109,6 +121,26 @@ function transformRawRow(row: RawRow, indicatorSlug: string): RawRow {
     confidence_high: pick(row, COLUMN_ALIASES.confidence_high),
     is_forecast: pick(row, COLUMN_ALIASES.is_forecast),
     model_id: pick(row, COLUMN_ALIASES.model_id),
+  };
+}
+
+function transformStatCanMedianAgeRow(row: RawRow, indicatorSlug: string) {
+  if (indicatorSlug !== "median-age") return null;
+
+  const characteristic = String(
+    pick(row, ["age_in_single_years_average_age_and_median_age_128"]) ?? "",
+  );
+  if (characteristic !== "Median age") return null;
+
+  const dguid = String(row.dguid ?? "");
+  const geographyCode = STATCAN_CSD_DGUID_TO_GEOGRAPHY[dguid];
+  if (!geographyCode) return null;
+
+  return {
+    indicator_slug: indicatorSlug,
+    geography_code: geographyCode,
+    year: pick(row, ["census_year_2", "ref_date"]),
+    value: pick(row, ["gender_3a_total_gender_1"]),
   };
 }
 
