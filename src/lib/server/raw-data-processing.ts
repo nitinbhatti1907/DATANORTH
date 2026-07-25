@@ -71,6 +71,7 @@ const STATCAN_CSD_DGUID_TO_GEOGRAPHY: Record<string, string> = {
   "2021A00053560010": "KENORA",
   "2021A00053557041": "ELLIOT-LAKE",
 };
+const STATCAN_TARGET_DGUIDS = Object.keys(STATCAN_CSD_DGUID_TO_GEOGRAPHY);
 
 const HIGH_SCHOOL_COMPLETION_TOTAL_COLUMN =
   "Secondary (high) school diploma or equivalency certificate (3):Total - Secondary (high) school diploma or equivalency certificate[1]";
@@ -269,6 +270,11 @@ async function streamHighSchoolCompletionCsv(filePath: string) {
     }
 
     rawRowsRead += 1;
+    if (!hasTargetDguid(line)) {
+      skippedRows += 1;
+      continue;
+    }
+
     const columns = parseCsvLine(line);
     const transformed = transformHighSchoolCompletionColumns(columns, index);
     if (!transformed) {
@@ -276,6 +282,14 @@ async function streamHighSchoolCompletionCsv(filePath: string) {
       continue;
     }
     rows.push(transformed);
+
+    const foundGeographies = new Set(
+      rows.map((row) => String(row.geography_code)),
+    );
+    if (foundGeographies.size >= STATCAN_TARGET_DGUIDS.length) {
+      rl.close();
+      break;
+    }
   }
 
   if (!rows.length) {
@@ -285,6 +299,10 @@ async function streamHighSchoolCompletionCsv(filePath: string) {
   }
 
   return { rows, rawRowsRead, skippedRows, warnings };
+}
+
+function hasTargetDguid(line: string) {
+  return STATCAN_TARGET_DGUIDS.some((dguid) => line.includes(dguid));
 }
 
 function transformHighSchoolCompletionColumns(

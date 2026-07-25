@@ -120,6 +120,11 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     const form = document.querySelector<HTMLFormElement>("#admin-raw-process-form");
     if (!form) return;
     const formData = new FormData(form);
+    const rawPath = String(formData.get("rawPath") ?? "").trim();
+    if (rawPath) {
+      formData.delete("files");
+      formData.set("rawPath", rawPath);
+    }
     formData.set("category", categorySlug);
     formData.set("indicatorSlug", indicatorSlug);
 
@@ -356,7 +361,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               <input
                 name="rawPath"
                 type="text"
-                placeholder="C:\Users\nitin\Desktop\Data North\Online Collected Data\education\high-school-completion\raw\SSM"
+                placeholder="Add File Path Here..."
                 className="field-control"
               />
             </Field>
