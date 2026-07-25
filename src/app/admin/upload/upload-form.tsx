@@ -61,6 +61,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
   const [categorySlug, setCategorySlug] = useState("");
   const [indicatorSlug, setIndicatorSlug] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("extend");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [state, setState] = useState<UploadState>({ status: "idle" });
   const [processedCsv, setProcessedCsv] = useState("");
   const [processedFilename, setProcessedFilename] = useState("");
@@ -76,15 +77,20 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     [indicatorSlug, indicators],
   );
 
+  const validationSucceeded = state.status === "valid";
+
   function updateCategory(value: string) {
     setCategorySlug(value);
     setIndicatorSlug("");
+    setSourceUrl("");
     resetProcessedFile();
     resetImportValidation();
   }
 
   function updateIndicator(value: string) {
     setIndicatorSlug(value);
+    const indicator = indicators.find((item) => item.slug === value);
+    setSourceUrl(indicator?.sourceUrl ?? "");
     resetProcessedFile();
     resetImportValidation();
   }
@@ -208,6 +214,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     formData.set("category", categorySlug);
     formData.set("indicatorSlug", indicatorSlug);
     formData.set("importMode", importMode);
+    formData.set("sourceUrl", sourceUrl.trim());
 
     setState({
       status: "working",
@@ -317,6 +324,20 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
             <p className="mt-3 text-sm text-ink-600">
               Selected indicator:{" "}
               <span className="font-medium text-ink-900">{selectedIndicator.name}</span>
+              {selectedIndicator.sourceUrl ? (
+                <>
+                  {" "}
+                  Current source:{" "}
+                  <a
+                    href={selectedIndicator.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-nordik-700 hover:text-nordik-800"
+                  >
+                    open link
+                  </a>
+                </>
+              ) : null}
             </p>
           ) : null}
         </section>
@@ -440,6 +461,24 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
             <code>is_forecast</code>, <code>model_id</code>.
           </div>
 
+          <div className="mt-5">
+            <Field label="Source URL">
+              <input
+                name="sourceUrl"
+                type="url"
+                value={sourceUrl}
+                onChange={(event) => setSourceUrl(event.target.value)}
+                placeholder="https://..."
+                className="field-control"
+                disabled={!validationSucceeded}
+              />
+            </Field>
+            <p className="mt-2 text-sm text-ink-500">
+              Validate the file first, then add or update the official source link
+              shown in the chart footer and methodology section.
+            </p>
+          </div>
+
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <button
               type="button"
@@ -454,7 +493,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               type="button"
               onClick={() => void submit("ingest")}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-nordik-700 px-4 text-sm font-medium text-white shadow-elev-1 hover:bg-nordik-800 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={state.status !== "valid"}
+              disabled={!validationSucceeded}
             >
               <Upload className="h-4 w-4" aria-hidden />
               Import to database

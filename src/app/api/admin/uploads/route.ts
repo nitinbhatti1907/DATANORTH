@@ -67,10 +67,19 @@ export async function POST(req: Request) {
   const category = String(form.get("category") ?? "") || undefined;
   const indicatorSlug = String(form.get("indicatorSlug") ?? "") || undefined;
   const importMode = parseImportMode(form.get("importMode"));
+  const mode = form.get("mode");
+  const sourceUrl = normalizeSourceUrl(form.get("sourceUrl"));
 
   if (!category || !indicatorSlug) {
     return NextResponse.json(
       { error: "Select a category and indicator before uploading data." },
+      { status: 400 },
+    );
+  }
+
+  if (mode !== "validate" && sourceUrl === false) {
+    return NextResponse.json(
+      { error: "Source URL must be a valid http:// or https:// link." },
       { status: 400 },
     );
   }
@@ -107,7 +116,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (form.get("mode") === "validate") {
+  if (mode === "validate") {
     return NextResponse.json({
       status: "valid",
       rowCount: validation.rows.length,
@@ -130,6 +139,7 @@ export async function POST(req: Request) {
       category,
       indicatorSlug,
       importMode,
+      sourceUrl: typeof sourceUrl === "string" ? sourceUrl : undefined,
     });
     return NextResponse.json({ status: "success", upload });
   } catch (error) {
@@ -145,4 +155,18 @@ export async function POST(req: Request) {
 
 function parseImportMode(value: FormDataEntryValue | null): ImportMode {
   return value === "replace" ? "replace" : "extend";
+}
+
+function normalizeSourceUrl(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return undefined;
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : false;
+  } catch {
+    return false;
+  }
 }

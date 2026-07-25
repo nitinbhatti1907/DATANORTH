@@ -247,6 +247,7 @@ export async function ingestUpload(params: {
   category?: string;
   indicatorSlug: string;
   importMode: ImportMode;
+  sourceUrl?: string;
 }) {
   if (!hasDatabaseConfig()) {
     throw new Error("DATABASE_URL is not configured.");
@@ -316,7 +317,11 @@ export async function ingestUpload(params: {
 
       await tx
         .update(indicators)
-        .set({ isSample: false, updatedAt: new Date() })
+        .set({
+          isSample: false,
+          ...(params.sourceUrl ? { sourceUrl: params.sourceUrl } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(indicators.slug, params.indicatorSlug));
 
       const [complete] = await tx
