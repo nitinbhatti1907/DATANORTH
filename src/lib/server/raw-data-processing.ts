@@ -1,4 +1,7 @@
 import Papa from "papaparse";
+import fs from "node:fs";
+import path from "node:path";
+import readline from "node:readline";
 import {
   parseUploadFile,
   validateUploadRows,
@@ -68,6 +71,11 @@ const STATCAN_CSD_DGUID_TO_GEOGRAPHY: Record<string, string> = {
   "2021A00053560010": "KENORA",
   "2021A00053557041": "ELLIOT-LAKE",
 };
+
+const HIGH_SCHOOL_COMPLETION_TOTAL_COLUMN =
+  "Secondary (high) school diploma or equivalency certificate (3):Total - Secondary (high) school diploma or equivalency certificate[1]";
+const HIGH_SCHOOL_COMPLETION_WITH_DIPLOMA_COLUMN =
+  "Secondary (high) school diploma or equivalency certificate (3):With high school diploma or equivalency certificate[3]";
 
 export async function processRawIndicatorFiles(params: {
   files: File[];
@@ -148,6 +156,228 @@ export async function processRawIndicatorFiles(params: {
       conflictRows: deduped.conflictRows,
       geographies,
       years,
+    },
+  };
+}
+
+export async function processRawIndicatorPath(params: {
+  rawPath: string;
+  category?: string;
+  indicatorSlug: string;
+}): Promise<ProcessResult> {
+  const files = await listRawFiles(params.rawPath);
+  if (!files.length) {
+    return emptyProcessResult(params.rawPath, "No CSV or Excel files found.");
+  }
+
+  if (params.indicatorSlug === "high-school-completion") {
+    return processHighSchoolCompletionPaths(files);
+  }
+
+  const fileObjects = await Promise.all(
+    files.map(async (filePath) => {
+      const bytes = await fs.promises.readFile(filePath);
+      return new File([bytes], path.basename(filePath));
+    }),
+  );
+
+  return processRawIndicatorFiles({
+    files: fileObjects,
+    category: params.category,
+    indicatorSlug: params.indicatorSlug,
+  });
+}
+
+async function processHighSchoolCompletionPaths(filePaths: string[]) {
+  const transformedRows: RawRow[] = [];
+  const warnings: string[] = [];
+  let rawRowsRead = 0;
+  let skippedRows = 0;
+  let filesProcessed = 0;
+
+  for (const filePath of filePaths) {
+    if (!filePath.toLowerCase().endsWith(".csv")) continue;
+    if (path.basename(filePath).toLowerCase().includes("metadata")) continue;
+
+    filesProcessed += 1;
+    const result = await streamHighSchoolCompletionCsv(filePath);
+    rawRowsRead += result.rawRowsRead;
+    skippedRows += result.skippedRows;
+    transformedRows.push(...result.rows);
+    warnings.push(...result.warnings);
+  }
+
+  const deduped = dedupeTransformedRows(transformedRows);
+  const errors = [...deduped.errors];
+  if (deduped.exactDuplicateRows) {
+    warnings.unshift(
+      `${deduped.exactDuplicateRows} exact duplicate row${
+        deduped.exactDuplicateRows === 1 ? " was" : "s were"
+      } skipped while combining raw files.`,
+    );
+  }
+
+  const validation = validateUploadRows(deduped.rows, {
+    indicatorSlug: "high-school-completion",
+  });
+  errors.push(...validation.errors);
+
+  const geographies = Array.from(
+    new Set(validation.rows.map((row) => row.geography_code)),
+  ).sort();
+  const years = Array.from(new Set(validation.rows.map((row) => row.year))).sort(
+    (a, b) => a - b,
+  );
+
+  return {
+    rows: validation.rows,
+    csv: Papa.unparse(validation.rows),
+    errors,
+    warnings: warnings.slice(0, 50),
+    summary: {
+      filesProcessed,
+      rawRowsRead,
+      candidateRows: transformedRows.length,
+      processedRows: validation.rows.length,
+      skippedRows,
+      exactDuplicateRows: deduped.exactDuplicateRows,
+      conflictRows: deduped.conflictRows,
+      geographies,
+      years,
+    },
+  };
+}
+
+async function streamHighSchoolCompletionCsv(filePath: string) {
+  const rows: RawRow[] = [];
+  const warnings: string[] = [];
+  let rawRowsRead = 0;
+  let skippedRows = 0;
+  let header: string[] | null = null;
+  let index: Record<string, number> = {};
+
+  const rl = readline.createInterface({
+    input: fs.createReadStream(filePath, { encoding: "utf8" }),
+    crlfDelay: Infinity,
+  });
+
+  for await (const line of rl) {
+    if (!header) {
+      header = parseCsvLine(line).map((column) => column.replace(/^\uFEFF/, ""));
+      index = Object.fromEntries(header.map((name, columnIndex) => [name, columnIndex]));
+      continue;
+    }
+
+    rawRowsRead += 1;
+    const columns = parseCsvLine(line);
+    const transformed = transformHighSchoolCompletionColumns(columns, index);
+    if (!transformed) {
+      skippedRows += 1;
+      continue;
+    }
+    rows.push(transformed);
+  }
+
+  if (!rows.length) {
+    warnings.push(
+      `${path.basename(filePath)}: no DATANORTH high-school-completion rows were found.`,
+    );
+  }
+
+  return { rows, rawRowsRead, skippedRows, warnings };
+}
+
+function transformHighSchoolCompletionColumns(
+  columns: string[],
+  index: Record<string, number>,
+) {
+  const geographyCode = STATCAN_CSD_DGUID_TO_GEOGRAPHY[getColumn(columns, index, "DGUID")];
+  if (!geographyCode) return null;
+  if (getColumn(columns, index, "Statistics (3)") !== "Count") return null;
+  if (getColumn(columns, index, "Gender (3)") !== "Total - Gender") return null;
+  if (getColumn(columns, index, "Age (15A)") !== "Total - Age") return null;
+  if (
+    getColumn(columns, index, "Labour force status (8)") !==
+    "Total - Labour force status"
+  ) {
+    return null;
+  }
+  if (
+    getColumn(columns, index, "Registered or Treaty Indian status (3)") !==
+    "Total - Registered or Treaty Indian status"
+  ) {
+    return null;
+  }
+  if (
+    getColumn(columns, index, "Indigenous identity (9)") !==
+    "Total - Indigenous identity"
+  ) {
+    return null;
+  }
+
+  const total = Number(
+    getColumn(columns, index, HIGH_SCHOOL_COMPLETION_TOTAL_COLUMN).replace(/,/g, ""),
+  );
+  const completed = Number(
+    getColumn(columns, index, HIGH_SCHOOL_COMPLETION_WITH_DIPLOMA_COLUMN).replace(
+      /,/g,
+      "",
+    ),
+  );
+  if (!Number.isFinite(total) || !Number.isFinite(completed) || total === 0) {
+    return null;
+  }
+
+  return {
+    indicator_slug: "high-school-completion",
+    geography_code: geographyCode,
+    year: getColumn(columns, index, "REF_DATE"),
+    value: Number(((completed / total) * 100).toFixed(1)),
+  };
+}
+
+function getColumn(
+  columns: string[],
+  index: Record<string, number>,
+  columnName: string,
+) {
+  const columnIndex = index[columnName];
+  return columnIndex == null ? "" : (columns[columnIndex] ?? "");
+}
+
+async function listRawFiles(rawPath: string) {
+  const stat = await fs.promises.stat(rawPath);
+  if (stat.isFile()) return [rawPath];
+
+  const entries = await fs.promises.readdir(rawPath, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const entryPath = path.join(rawPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listRawFiles(entryPath)));
+    } else if (/\.(csv|xlsx|xls)$/i.test(entry.name)) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
+function emptyProcessResult(source: string, warning: string): ProcessResult {
+  return {
+    rows: [],
+    csv: "",
+    errors: [],
+    warnings: [`${source}: ${warning}`],
+    summary: {
+      filesProcessed: 0,
+      rawRowsRead: 0,
+      candidateRows: 0,
+      processedRows: 0,
+      skippedRows: 0,
+      exactDuplicateRows: 0,
+      conflictRows: 0,
+      geographies: [],
+      years: [],
     },
   };
 }
@@ -281,4 +511,37 @@ function parseYear(value: unknown) {
   if (typeof value === "number") return value;
   const match = String(value ?? "").match(/\b(19|20)\d{2}\b/);
   return match ? match[0] : value;
+}
+
+function parseCsvLine(line: string) {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (char === '"' && inQuotes && nextChar === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  cells.push(current);
+  return cells;
 }

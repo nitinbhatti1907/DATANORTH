@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/server/admin-auth";
-import { processRawIndicatorFiles } from "@/lib/server/raw-data-processing";
+import {
+  processRawIndicatorFiles,
+  processRawIndicatorPath,
+} from "@/lib/server/raw-data-processing";
 
 export async function POST(req: Request) {
   const session = await getAdminSession();
@@ -11,6 +14,7 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const indicatorSlug = String(form.get("indicatorSlug") ?? "");
   const category = String(form.get("category") ?? "") || undefined;
+  const rawPath = String(form.get("rawPath") ?? "").trim();
   const files = form.getAll("files").filter((file): file is File => file instanceof File);
 
   if (!indicatorSlug) {
@@ -20,15 +24,21 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!files.length) {
+  if (!files.length && !rawPath) {
     return NextResponse.json({ error: "Missing raw source file." }, { status: 400 });
   }
 
-  const processed = await processRawIndicatorFiles({
-    files,
-    category,
-    indicatorSlug,
-  });
+  const processed = rawPath
+    ? await processRawIndicatorPath({
+        rawPath,
+        category,
+        indicatorSlug,
+      })
+    : await processRawIndicatorFiles({
+        files,
+        category,
+        indicatorSlug,
+      });
 
   if (processed.errors.length) {
     return NextResponse.json(

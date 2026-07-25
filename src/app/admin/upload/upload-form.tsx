@@ -351,10 +351,20 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               />
             </Field>
           </div>
+          <div className="mt-4">
+            <Field label="Local raw folder path">
+              <input
+                name="rawPath"
+                type="text"
+                placeholder="C:\Users\nitin\Desktop\Data North\Online Collected Data\education\high-school-completion\raw\SSM"
+                className="field-control"
+              />
+            </Field>
+          </div>
           <div className="mt-4 rounded-md border border-ink-200 bg-ink-50 p-4 text-sm text-ink-700">
-            Best results come from files that include recognizable columns for
-            geography, year, and value. Indicator is added from the selected
-            indicator above.
+            For normal files, use file upload. For very large local raw files,
+            paste the folder path so the server can read them directly without
+            the browser upload size limit.
           </div>
           {processedCsv ? (
             <button
