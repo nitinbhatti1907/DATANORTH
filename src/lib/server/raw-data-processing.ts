@@ -252,6 +252,16 @@ async function processHighSchoolCompletionPaths(filePaths: string[]) {
 async function streamHighSchoolCompletionCsv(filePath: string) {
   const rows: RawRow[] = [];
   const warnings: string[] = [];
+  const selectedRows = new Map<
+    string,
+    {
+      indicator_slug: string;
+      geography_code: string;
+      year: string;
+      total?: number;
+      completed?: number;
+    }
+  >();
   let rawRowsRead = 0;
   let skippedRows = 0;
   let header: string[] | null = null;
@@ -277,19 +287,52 @@ async function streamHighSchoolCompletionCsv(filePath: string) {
 
     const columns = parseCsvLine(line);
     const transformed = transformHighSchoolCompletionColumns(columns, index);
-    if (!transformed) {
+    if (transformed) {
+      rows.push(transformed);
+    }
+
+    const selectedFact = transformSelectedHighSchoolCompletionFact(columns, index);
+    if (selectedFact) {
+      const existing = selectedRows.get(selectedFact.key) ?? {
+        indicator_slug: "high-school-completion",
+        geography_code: selectedFact.geography_code,
+        year: selectedFact.year,
+      };
+      if (selectedFact.kind === "total") {
+        existing.total = selectedFact.value;
+      } else {
+        existing.completed = selectedFact.value;
+      }
+      selectedRows.set(selectedFact.key, existing);
+    }
+
+    if (!transformed && !selectedFact) {
       skippedRows += 1;
       continue;
     }
-    rows.push(transformed);
 
     const foundGeographies = new Set(
-      rows.map((row) => String(row.geography_code)),
+      [
+        ...rows.map((row) => String(row.geography_code)),
+        ...Array.from(selectedRows.values())
+          .filter((row) => row.total != null && row.completed != null)
+          .map((row) => row.geography_code),
+      ],
     );
     if (foundGeographies.size >= STATCAN_TARGET_DGUIDS.length) {
       rl.close();
       break;
     }
+  }
+
+  for (const row of selectedRows.values()) {
+    if (row.total == null || row.completed == null || row.total === 0) continue;
+    rows.push({
+      indicator_slug: row.indicator_slug,
+      geography_code: row.geography_code,
+      year: row.year,
+      value: Number(((row.completed / row.total) * 100).toFixed(1)),
+    });
   }
 
   if (!rows.length) {
@@ -299,6 +342,64 @@ async function streamHighSchoolCompletionCsv(filePath: string) {
   }
 
   return { rows, rawRowsRead, skippedRows, warnings };
+}
+
+function transformSelectedHighSchoolCompletionFact(
+  columns: string[],
+  index: Record<string, number>,
+) {
+  const geographyCode = STATCAN_CSD_DGUID_TO_GEOGRAPHY[getColumn(columns, index, "DGUID")];
+  if (!geographyCode) return null;
+  if (getColumn(columns, index, "Statistics (3)") !== "Count") return null;
+  if (getColumn(columns, index, "Gender (3)") !== "Total - Gender") return null;
+  if (getColumn(columns, index, "Age (15A)") !== "Total - Age") return null;
+  if (
+    getColumn(columns, index, "Labour force status (8)").trim() !==
+    "Total - Labour force status"
+  ) {
+    return null;
+  }
+  if (
+    getColumn(columns, index, "Registered or Treaty Indian status (3)") !==
+    "Total - Registered or Treaty Indian status"
+  ) {
+    return null;
+  }
+  if (
+    getColumn(columns, index, "Indigenous identity (9)") !==
+    "Total - Indigenous identity"
+  ) {
+    return null;
+  }
+
+  const credential = getColumn(
+    columns,
+    index,
+    "Secondary (high) school diploma or equivalency certificate (3)",
+  );
+  const rawValue = getColumn(columns, index, "VALUE").replace(/,/g, "");
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return null;
+
+  const year = getColumn(columns, index, "REF_DATE");
+  const key = `${geographyCode}||${year}`;
+  if (
+    credential ===
+    "Total - Secondary (high) school diploma or equivalency certificate"
+  ) {
+    return { key, geography_code: geographyCode, year, kind: "total" as const, value };
+  }
+  if (credential === "With high school diploma or equivalency certificate") {
+    return {
+      key,
+      geography_code: geographyCode,
+      year,
+      kind: "completed" as const,
+      value,
+    };
+  }
+
+  return null;
 }
 
 function hasTargetDguid(line: string) {
@@ -315,7 +416,7 @@ function transformHighSchoolCompletionColumns(
   if (getColumn(columns, index, "Gender (3)") !== "Total - Gender") return null;
   if (getColumn(columns, index, "Age (15A)") !== "Total - Age") return null;
   if (
-    getColumn(columns, index, "Labour force status (8)") !==
+    getColumn(columns, index, "Labour force status (8)").trim() !==
     "Total - Labour force status"
   ) {
     return null;
