@@ -27,7 +27,7 @@ type ProcessSummary = {
 
 type UploadState =
   | { status: "idle" }
-  | { status: "working"; message: string }
+  | { status: "working"; message: string; progress?: number }
   | {
       status: "valid";
       rowCount: number;
@@ -45,6 +45,17 @@ type UploadState =
   | { status: "error"; message: string; errors?: string[] };
 
 type ImportMode = "replace" | "extend";
+
+type RawProcessResponse = {
+  csv?: string;
+  filename?: string;
+  rowCount?: number;
+  preview?: PreviewRow[];
+  warnings?: string[];
+  summary?: ProcessSummary;
+  error?: string;
+  errors?: string[];
+};
 
 export function UploadForm({ indicators }: { indicators: Indicator[] }) {
   const [categorySlug, setCategorySlug] = useState("");
@@ -112,18 +123,55 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     formData.set("category", categorySlug);
     formData.set("indicatorSlug", indicatorSlug);
 
-    setState({ status: "working", message: "Processing raw files..." });
-    const res = await fetch("/api/admin/uploads/process", {
-      method: "POST",
-      body: formData,
-    });
-    const json = await res.json();
+    setState({ status: "working", message: "Processing raw files...", progress: 0 });
+    const progressTimer = window.setInterval(() => {
+      setState((current) => {
+        if (current.status !== "working" || current.progress == null) {
+          return current;
+        }
+        const nextProgress =
+          current.progress < 50
+            ? current.progress + 10
+            : current.progress < 80
+              ? current.progress + 5
+              : current.progress + 2;
+        return {
+          ...current,
+          progress: Math.min(nextProgress, 95),
+        };
+      });
+    }, 700);
 
-    if (!res.ok) {
+    let json: RawProcessResponse = {};
+    try {
+      const res = await fetch("/api/admin/uploads/process", {
+        method: "POST",
+        body: formData,
+      });
+      json = await res.json();
+
+      window.clearInterval(progressTimer);
+
+      if (!res.ok) {
+        setState({
+          status: "error",
+          message: json.error ?? "Raw file processing failed.",
+          errors: json.errors,
+        });
+        return;
+      }
+
+      setState({
+        status: "working",
+        message: "Finalizing processed file...",
+        progress: 100,
+      });
+    } catch (error) {
+      window.clearInterval(progressTimer);
       setState({
         status: "error",
-        message: json.error ?? "Raw file processing failed.",
-        errors: json.errors,
+        message:
+          error instanceof Error ? error.message : "Raw file processing failed.",
       });
       return;
     }
@@ -132,7 +180,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
     setProcessedFilename(json.filename ?? `${indicatorSlug}_processed.csv`);
     setState({
       status: "processed",
-      rowCount: json.rowCount,
+      rowCount: json.rowCount ?? 0,
       preview: json.preview ?? [],
       warnings: json.warnings ?? [],
       summary: json.summary,
@@ -449,7 +497,12 @@ function Status({ state }: { state: UploadState }) {
     );
   }
   if (state.status === "working") {
-    return <p className="mt-3 text-sm text-ink-600">{state.message}</p>;
+    return (
+      <div className="mt-3">
+        <p className="text-sm text-ink-600">{state.message}</p>
+        {state.progress != null ? <ProgressBar value={state.progress} /> : null}
+      </div>
+    );
   }
   if (state.status === "error") {
     return (
@@ -513,6 +566,25 @@ function Status({ state }: { state: UploadState }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  const rounded = Math.round(value);
+  return (
+    <div className="mt-3" aria-live="polite">
+      <div className="mb-1 flex items-center justify-between text-xs text-ink-500">
+        <span>Processing progress</span>
+        <span>{rounded}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-ink-100">
+        <div
+          className="h-full rounded-full bg-nordik-700 transition-all duration-500 ease-out"
+          style={{ width: `${rounded}%` }}
+        />
+      </div>
+      <p className="mt-1 text-xs text-ink-500">{100 - rounded}% remaining</p>
     </div>
   );
 }
