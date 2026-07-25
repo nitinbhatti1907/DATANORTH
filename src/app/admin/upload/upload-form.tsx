@@ -89,8 +89,7 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
 
   function updateIndicator(value: string) {
     setIndicatorSlug(value);
-    const indicator = indicators.find((item) => item.slug === value);
-    setSourceUrl(indicator?.sourceUrl ?? "");
+    setSourceUrl("");
     resetProcessedFile();
     resetImportValidation();
   }
@@ -474,8 +473,9 @@ export function UploadForm({ indicators }: { indicators: Indicator[] }) {
               />
             </Field>
             <p className="mt-2 text-sm text-ink-500">
-              Validate the file first, then add or update the official source link
-              shown in the chart footer and methodology section.
+              Validate the file first, then paste the official source link to
+              save it on the chart footer and methodology section. Leave this
+              blank to keep the current source link.
             </p>
           </div>
 
