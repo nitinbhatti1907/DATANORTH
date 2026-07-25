@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import Papa from "papaparse";
 import { getDb, hasDatabaseConfig } from "@/db/client";
-import { dataUploads, indicatorValues } from "@/db/schema";
+import { dataUploads, indicators, indicatorValues } from "@/db/schema";
 
 export type UploadPreviewRow = {
   indicator_slug: string;
@@ -313,6 +313,11 @@ export async function ingestUpload(params: {
           isCurrent: true,
         });
       }
+
+      await tx
+        .update(indicators)
+        .set({ isSample: false, updatedAt: new Date() })
+        .where(eq(indicators.slug, params.indicatorSlug));
 
       const [complete] = await tx
         .update(dataUploads)
