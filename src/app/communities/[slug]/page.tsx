@@ -5,13 +5,19 @@ import { KPIStrip, type KPITileData } from "@/components/data/kpi-strip";
 import { IndicatorCard } from "@/components/cards/indicator-card";
 import { ChartPanel } from "@/components/data/chart-panel";
 import { GEOGRAPHIES, FEATURED_COMMUNITIES, getGeography } from "@/lib/data/geographies";
-import { INDICATORS, getFeaturedIndicators } from "@/lib/data/indicators";
 import { CATEGORIES } from "@/lib/data/categories";
 import { getLatestValue, queryChartData } from "@/lib/query";
 import { formatNumber } from "@/lib/format";
+import { getRequestLocale } from "@/lib/server/locale";
+import { getIndicatorsRepository } from "@/lib/server/data-repository";
+import {
+  localizePath,
+  translateCategory,
+  translateGeography,
+} from "@/lib/i18n";
 import { ArrowLeft, MapPin } from "lucide-react";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 export const dynamicParams = false;
 
 function slugifyName(name: string) {
@@ -49,12 +55,41 @@ export default async function CommunityProfile({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const geography = findByUrlSlug(slug);
-  if (!geography) notFound();
+  const locale = await getRequestLocale();
+  const baseGeography = findByUrlSlug(slug);
+  if (!baseGeography) notFound();
+  const geography = translateGeography(baseGeography, locale);
+  const copy =
+    locale === "fr"
+      ? {
+          communities: "Communautes",
+          profile: "Profil de la communaute",
+          population: "Population",
+          census: "Recensement de 2021",
+          featured: "Indicateurs en vedette",
+          versus: "par rapport au Nord de l'Ontario",
+          comparePrefix: "Comment",
+          compareMiddle: "se compare aux reperes regionaux et provinciaux pour",
+          more: "Autres indicateurs",
+          all: "Toutes les communautes",
+        }
+      : {
+          communities: "Communities",
+          profile: "Community profile",
+          population: "Population",
+          census: "2021 Census",
+          featured: "Featured indicators",
+          versus: "vs. Northern Ontario",
+          comparePrefix: "How",
+          compareMiddle: "compares to the regional and provincial benchmarks for",
+          more: "More indicators",
+          all: "All communities",
+        };
 
-  const featured = getFeaturedIndicators();
+  const localizedIndicators = await getIndicatorsRepository(locale);
+  const featured = localizedIndicators.filter((indicator) => indicator.featured);
   const tiles: KPITileData[] = featured.flatMap<KPITileData>((ind) => {
-    const latest = getLatestValue(ind.slug, geography.code);
+    const latest = getLatestValue(ind.slug, baseGeography.code);
     if (!latest) return [];
     return [
       {
@@ -62,25 +97,30 @@ export default async function CommunityProfile({
         latest: latest.value,
         previous: latest.previous,
         latestYear: latest.year,
-        href: `/indicators/${ind.slug}?geo=${geography.code}`,
+        href: localizePath(
+          `/indicators/${ind.slug}`,
+          locale,
+          `?geo=${baseGeography.code}`,
+        ),
       },
     ];
   });
 
-  const allIndicators = INDICATORS.filter((i) => !i.featured);
+  const allIndicators = localizedIndicators.filter((i) => !i.featured);
 
-  const headlineIndicator = INDICATORS.find(
+  const headlineIndicator = localizedIndicators.find(
     (i) => i.slug === "median-household-income",
   );
   const chartData = headlineIndicator
     ? queryChartData({
         indicatorSlug: headlineIndicator.slug,
-        geographies: [geography.code, "NORTHERN-ON", "ON"],
+        geographies: [baseGeography.code, "NORTHERN-ON", "ON"],
+        locale,
       })
     : null;
 
   // Group remaining indicators by category
-  const byCat = new Map<string, typeof INDICATORS>();
+  const byCat = new Map<string, typeof allIndicators>();
   for (const i of allIndicators) {
     const arr = byCat.get(i.category) ?? [];
     arr.push(i);
@@ -94,26 +134,27 @@ export default async function CommunityProfile({
         <div className="content-container relative py-12">
           <Breadcrumbs
             items={[
-              { href: "/communities", label: "Communities" },
+              { href: localizePath("/communities", locale), label: copy.communities },
               { label: geography.name },
             ]}
+            locale={locale}
           />
           <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-nordik-700">
                 <MapPin className="h-3.5 w-3.5" aria-hidden />
-                Community profile
+                {copy.profile}
               </div>
               <h1 className="mt-2 font-display text-display-xl font-semibold leading-[1.02] tracking-tight text-ink-900">
                 {geography.name}
               </h1>
               {geography.population && (
                 <p className="mt-3 text-ink-600">
-                  Population{" "}
+                  {copy.population}{" "}
                   <span className="num-plate text-ink-900">
                     {formatNumber(geography.population)}
                   </span>{" "}
-                  <span className="text-xs text-ink-500">(2021 Census)</span>
+                  <span className="text-xs text-ink-500">({copy.census})</span>
                 </p>
               )}
             </div>
@@ -125,10 +166,10 @@ export default async function CommunityProfile({
       {tiles.length > 0 && (
         <section className="content-container py-10">
           <h2 className="font-display text-display-sm font-semibold tracking-tight text-ink-900">
-            Featured indicators
+            {copy.featured}
           </h2>
           <div className="mt-6">
-            <KPIStrip tiles={tiles} />
+            <KPIStrip tiles={tiles} locale={locale} />
           </div>
         </section>
       )}
@@ -137,12 +178,11 @@ export default async function CommunityProfile({
       {chartData && (
         <section className="content-container py-10">
           <h2 className="font-display text-display-sm font-semibold tracking-tight text-ink-900">
-            {geography.name} vs. Northern Ontario
+            {geography.name} {copy.versus}
           </h2>
           <p className="mt-2 max-w-2xl text-ink-600">
-            How {geography.name}&rsquo;s{" "}
-            {chartData.indicator.name.toLowerCase()} compares to the regional
-            and provincial benchmarks.
+            {copy.comparePrefix} {geography.name} {copy.compareMiddle}{" "}
+            {chartData.indicator.name.toLowerCase()}.
           </p>
           <div className="mt-6">
             <ChartPanel data={chartData} height={400} />
@@ -153,11 +193,14 @@ export default async function CommunityProfile({
       {/* All indicators by category */}
       <section className="content-container py-10">
         <h2 className="font-display text-display-sm font-semibold tracking-tight text-ink-900">
-          More indicators
+          {copy.more}
         </h2>
         <div className="mt-6 space-y-10">
           {Array.from(byCat.entries()).map(([catSlug, inds]) => {
-            const cat = CATEGORIES[catSlug as keyof typeof CATEGORIES];
+            const cat = translateCategory(
+              CATEGORIES[catSlug as keyof typeof CATEGORIES],
+              locale,
+            );
             if (!cat) return null;
             return (
               <div key={catSlug}>
@@ -176,7 +219,8 @@ export default async function CommunityProfile({
                     <IndicatorCard
                       key={i.slug}
                       indicator={i}
-                      geographyCode={geography.code}
+                      geographyCode={baseGeography.code}
+                      locale={locale}
                     />
                   ))}
                 </div>
@@ -187,11 +231,11 @@ export default async function CommunityProfile({
 
         <div className="mt-10">
           <Link
-            href="/communities"
+            href={localizePath("/communities", locale)}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            All communities
+            {copy.all}
           </Link>
         </div>
       </section>

@@ -2,16 +2,112 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { INDICATORS } from "@/lib/data/indicators";
 import { CATEGORIES } from "@/lib/data/categories";
-import { formatDate } from "@/lib/format";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { formatDateLocale } from "@/lib/format";
+import {
+  DEFAULT_LOCALE,
+  localizePath,
+  translateCategory,
+  type Locale,
+} from "@/lib/i18n";
+import type { Indicator } from "@/types";
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+} from "lucide-react";
 
 const ROWS_PER_PAGE = 5;
 
 type SortKey = "name" | "category" | "source" | "lastUpdated";
 
-export function MethodologyDictionary() {
+const COPY = {
+  en: {
+    search: "Search",
+    searchPlaceholder: "Search by name, source, description...",
+    category: "Category",
+    dataType: "Data type",
+    allCategories: "All categories",
+    all: "All",
+    realOnly: "Real data only",
+    sampleOnly: "Sample data only",
+    clear: "Clear",
+    showing: "Showing",
+    of: "of",
+    filteredFrom: "filtered from",
+    indicator: "indicator",
+    indicators: "indicators",
+    columns: {
+      indicator: "Indicator",
+      category: "Category",
+      source: "Source",
+      lastUpdated: "Last updated",
+      frequency: "Frequency",
+      status: "Status",
+      open: "Open",
+    },
+    empty: "No indicators match your filters.",
+    visitSource: "Visit source",
+    sample: "Sample",
+    real: "Real",
+    page: "Page",
+    previous: "Prev",
+    next: "Next",
+  },
+  fr: {
+    search: "Recherche",
+    searchPlaceholder: "Rechercher par nom, source, description...",
+    category: "Categorie",
+    dataType: "Type de donnees",
+    allCategories: "Toutes les categories",
+    all: "Tout",
+    realOnly: "Donnees reelles seulement",
+    sampleOnly: "Donnees d'exemple seulement",
+    clear: "Effacer",
+    showing: "Affichage",
+    of: "sur",
+    filteredFrom: "filtre depuis",
+    indicator: "indicateur",
+    indicators: "indicateurs",
+    columns: {
+      indicator: "Indicateur",
+      category: "Categorie",
+      source: "Source",
+      lastUpdated: "Derniere mise a jour",
+      frequency: "Frequence",
+      status: "Statut",
+      open: "Ouvrir",
+    },
+    empty: "Aucun indicateur ne correspond a vos filtres.",
+    visitSource: "Voir la source",
+    sample: "Exemple",
+    real: "Reel",
+    page: "Page",
+    previous: "Prec.",
+    next: "Suiv.",
+  },
+} as const;
+
+export function MethodologyDictionary({
+  indicators,
+  locale = DEFAULT_LOCALE,
+}: {
+  indicators: Indicator[];
+  locale?: Locale;
+}) {
+  const copy = COPY[locale];
+  const categories = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.values(CATEGORIES).map((category) => [
+          category.slug,
+          translateCategory(category, locale),
+        ]),
+      ) as typeof CATEGORIES,
+    [locale],
+  );
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sampleFilter, setSampleFilter] = useState<"all" | "real" | "sample">(
@@ -21,13 +117,12 @@ export function MethodologyDictionary() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
 
-  // Reset to page 1 whenever filters or sort change
   useEffect(() => {
     setPage(1);
   }, [query, categoryFilter, sampleFilter, sortKey, sortDir]);
 
   const filtered = useMemo(() => {
-    let rows = INDICATORS.slice();
+    let rows = indicators.slice();
 
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -60,9 +155,9 @@ export function MethodologyDictionary() {
     });
 
     return rows;
-  }, [query, categoryFilter, sampleFilter, sortKey, sortDir]);
+  }, [query, categoryFilter, sampleFilter, sortKey, sortDir, indicators]);
 
-const setSort = (k: SortKey) => {
+  const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
     else {
       setSortKey(k);
@@ -72,8 +167,6 @@ const setSort = (k: SortKey) => {
 
   const hasActiveFilter =
     query.trim() || categoryFilter !== "all" || sampleFilter !== "all";
-
-  // Pagination math
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const startIdx = (currentPage - 1) * ROWS_PER_PAGE;
@@ -82,12 +175,11 @@ const setSort = (k: SortKey) => {
 
   return (
     <div className="overflow-hidden rounded-xl border border-ink-200 bg-white shadow-elev-1">
-      {/* Filter bar */}
       <div className="border-b border-ink-200 bg-ink-50/40 p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-              Search
+              {copy.search}
             </label>
             <div className="relative">
               <Search
@@ -98,7 +190,7 @@ const setSort = (k: SortKey) => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name, source, description…"
+                placeholder={copy.searchPlaceholder}
                 className="block w-full rounded-md border border-ink-200 bg-white py-1.5 pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-nordik-400 focus:outline-none focus:ring-2 focus:ring-nordik-100"
               />
             </div>
@@ -106,15 +198,15 @@ const setSort = (k: SortKey) => {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-              Category
+              {copy.category}
             </label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-900 focus:border-nordik-400 focus:outline-none focus:ring-2 focus:ring-nordik-100"
             >
-              <option value="all">All categories</option>
-              {Object.values(CATEGORIES).map((c) => (
+              <option value="all">{copy.allCategories}</option>
+              {Object.values(categories).map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.shortName}
                 </option>
@@ -124,7 +216,7 @@ const setSort = (k: SortKey) => {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-              Data type
+              {copy.dataType}
             </label>
             <select
               value={sampleFilter}
@@ -133,9 +225,9 @@ const setSort = (k: SortKey) => {
               }
               className="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-900 focus:border-nordik-400 focus:outline-none focus:ring-2 focus:ring-nordik-100"
             >
-              <option value="all">All</option>
-              <option value="real">Real data only</option>
-              <option value="sample">Sample data only</option>
+              <option value="all">{copy.all}</option>
+              <option value="real">{copy.realOnly}</option>
+              <option value="sample">{copy.sampleOnly}</option>
             </select>
           </div>
 
@@ -150,55 +242,51 @@ const setSort = (k: SortKey) => {
               className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-600 hover:border-ink-300 hover:text-ink-900"
             >
               <X className="h-3 w-3" aria-hidden />
-              Clear
+              {copy.clear}
             </button>
           )}
         </div>
         <div className="mt-3 text-xs text-ink-500">
-          Showing{" "}
+          {copy.showing}{" "}
           <span className="font-medium text-ink-700">
             {filtered.length === 0
               ? 0
-              : `${startIdx + 1}–${Math.min(endIdx, filtered.length)}`}
+              : `${startIdx + 1}-${Math.min(endIdx, filtered.length)}`}
           </span>{" "}
-          of{" "}
+          {copy.of}{" "}
           <span className="font-medium text-ink-700">{filtered.length}</span>{" "}
-          {filtered.length === 1 ? "indicator" : "indicators"}
-          {filtered.length !== INDICATORS.length && (
-            <>
-              {" "}
-              (filtered from {INDICATORS.length})
-            </>
+          {filtered.length === 1 ? copy.indicator : copy.indicators}
+          {filtered.length !== indicators.length && (
+            <> ({copy.filteredFrom} {indicators.length})</>
           )}
           .
         </div>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead className="bg-white">
             <tr>
               <Th onClick={() => setSort("name")} active={sortKey === "name"} dir={sortDir}>
-                Indicator
+                {copy.columns.indicator}
               </Th>
               <Th onClick={() => setSort("category")} active={sortKey === "category"} dir={sortDir}>
-                Category
+                {copy.columns.category}
               </Th>
               <Th onClick={() => setSort("source")} active={sortKey === "source"} dir={sortDir}>
-                Source
+                {copy.columns.source}
               </Th>
               <Th onClick={() => setSort("lastUpdated")} active={sortKey === "lastUpdated"} dir={sortDir}>
-                Last updated
+                {copy.columns.lastUpdated}
               </Th>
               <th className="border-b border-ink-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-500">
-                Frequency
+                {copy.columns.frequency}
               </th>
               <th className="border-b border-ink-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-500">
-                Status
+                {copy.columns.status}
               </th>
               <th className="border-b border-ink-200 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-500">
-                Open
+                {copy.columns.open}
               </th>
             </tr>
           </thead>
@@ -206,12 +294,12 @@ const setSort = (k: SortKey) => {
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-500">
-                  No indicators match your filters.
+                  {copy.empty}
                 </td>
               </tr>
             ) : (
               pageRows.map((i) => {
-                const cat = CATEGORIES[i.category];
+                const cat = categories[i.category];
                 return (
                   <tr
                     key={i.slug}
@@ -247,13 +335,13 @@ const setSort = (k: SortKey) => {
                           rel="noopener noreferrer"
                           className="mt-0.5 inline-flex items-center gap-0.5 text-xs text-nordik-700 hover:text-nordik-800"
                         >
-                          Visit source
+                          {copy.visitSource}
                           <ArrowUpRight className="h-3 w-3" aria-hidden />
                         </a>
                       )}
                     </td>
                     <td className="border-b border-ink-100 px-4 py-3 whitespace-nowrap text-xs font-mono text-ink-600">
-                      {formatDate(i.lastUpdated)}
+                      {formatDateLocale(i.lastUpdated, locale)}
                     </td>
                     <td className="border-b border-ink-100 px-4 py-3 whitespace-nowrap text-xs text-ink-600">
                       {i.updateFrequency}
@@ -261,20 +349,20 @@ const setSort = (k: SortKey) => {
                     <td className="border-b border-ink-100 px-4 py-3 whitespace-nowrap">
                       {i.isSample ? (
                         <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                          Sample
+                          {copy.sample}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                          Real
+                          {copy.real}
                         </span>
                       )}
                     </td>
                     <td className="border-b border-ink-100 px-4 py-3 text-right">
                       <Link
-                        href={`/indicators/${i.slug}`}
+                        href={localizePath(`/indicators/${i.slug}`, locale)}
                         className="inline-flex items-center gap-1 text-xs font-medium text-nordik-700 transition-colors hover:text-nordik-800"
                       >
-                        Open
+                        {copy.columns.open}
                         <ArrowUpRight className="h-3 w-3" aria-hidden />
                       </Link>
                     </td>
@@ -286,12 +374,12 @@ const setSort = (k: SortKey) => {
         </table>
       </div>
 
-      {/* Pagination */}
       {filtered.length > ROWS_PER_PAGE && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-200 bg-ink-50/40 px-4 py-3">
           <div className="text-xs text-ink-500">
-            Page{" "}
-            <span className="font-medium text-ink-700">{currentPage}</span> of{" "}
+            {copy.page}{" "}
+            <span className="font-medium text-ink-700">{currentPage}</span>{" "}
+            {copy.of}{" "}
             <span className="font-medium text-ink-700">{totalPages}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -300,19 +388,19 @@ const setSort = (k: SortKey) => {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="inline-flex h-8 items-center gap-1 rounded-md border border-ink-200 bg-white px-2.5 text-xs font-medium text-ink-700 transition-colors hover:border-ink-300 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:text-ink-700"
-              aria-label="Previous page"
+              aria-label={copy.previous}
             >
               <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-              Prev
+              {copy.previous}
             </button>
             {getPageNumbers(currentPage, totalPages).map((p, idx) =>
-              p === "…" ? (
+              p === "..." ? (
                 <span
                   key={`gap-${idx}`}
                   className="px-1.5 text-xs text-ink-400"
                   aria-hidden
                 >
-                  …
+                  ...
                 </span>
               ) : (
                 <button
@@ -336,9 +424,9 @@ const setSort = (k: SortKey) => {
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="inline-flex h-8 items-center gap-1 rounded-md border border-ink-200 bg-white px-2.5 text-xs font-medium text-ink-700 transition-colors hover:border-ink-300 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:text-ink-700"
-              aria-label="Next page"
+              aria-label={copy.next}
             >
-              Next
+              {copy.next}
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
@@ -348,20 +436,18 @@ const setSort = (k: SortKey) => {
   );
 }
 
-/**
- * Build a compact page-number list with ellipses for large totals.
- * Examples (current=1, total=10) → [1, 2, 3, …, 10]
- *          (current=5, total=10) → [1, …, 4, 5, 6, …, 10]
- *          (current=10, total=10) → [1, …, 8, 9, 10]
- */
-function getPageNumbers(current: number, total: number): Array<number | "…"> {
+function getPageNumbers(current: number, total: number): Array<number | "..."> {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: Array<number | "…"> = [1];
-  if (current > 3) pages.push("…");
-  const start = Math.max(2, current - 1);
-  const end = Math.min(total - 1, current + 1);
-  for (let p = start; p <= end; p++) pages.push(p);
-  if (current < total - 2) pages.push("…");
+  const pages: Array<number | "..."> = [1];
+  if (current > 3) pages.push("...");
+  for (
+    let p = Math.max(2, current - 1);
+    p <= Math.min(total - 1, current + 1);
+    p++
+  ) {
+    pages.push(p);
+  }
+  if (current < total - 2) pages.push("...");
   pages.push(total);
   return pages;
 }
@@ -382,20 +468,10 @@ function Th({
       <button
         type="button"
         onClick={onClick}
-        className={
-          "inline-flex items-center gap-1 transition-colors " +
-          (active ? "text-nordik-700" : "hover:text-ink-700")
-        }
+        className="inline-flex items-center gap-1 hover:text-ink-800"
       >
         {children}
-        <span
-          className={
-            "inline-block text-[10px] transition-opacity " +
-            (active ? "opacity-100" : "opacity-30")
-          }
-        >
-          {active ? (dir === "asc" ? "▲" : "▼") : "▲"}
-        </span>
+        {active && <span aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>}
       </button>
     </th>
   );
