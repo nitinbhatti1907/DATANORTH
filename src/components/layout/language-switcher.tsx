@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Languages } from "lucide-react";
 import {
   getPathLocale,
@@ -14,20 +12,12 @@ import {
 import { cn } from "@/lib/utils";
 
 export function LanguageSwitcher({ locale }: { locale: Locale }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentLocale = getPathLocale(pathname) ?? locale;
-  const previousLocale = useRef(currentLocale);
   const search = searchParams?.toString();
   const query = search ? `?${search}` : "";
   const t = getTranslations(currentLocale).nav;
-
-  useEffect(() => {
-    if (previousLocale.current === currentLocale) return;
-    previousLocale.current = currentLocale;
-    router.refresh();
-  }, [currentLocale, router]);
 
   return (
     <div
@@ -37,10 +27,11 @@ export function LanguageSwitcher({ locale }: { locale: Locale }) {
       <Languages className="ml-2 h-4 w-4 text-ink-500" aria-hidden />
       {(["en", "fr"] as Locale[]).map((targetLocale) => {
         const active = targetLocale === currentLocale;
+        const href = localizePath(pathname ?? "/", targetLocale, query);
         return (
-          <Link
+          <a
             key={targetLocale}
-            href={localizePath(pathname ?? "/", targetLocale, query)}
+            href={href}
             onClick={() => {
               document.cookie = `${LOCALE_COOKIE}=${targetLocale}; path=/; max-age=31536000; SameSite=Lax`;
             }}
@@ -54,7 +45,7 @@ export function LanguageSwitcher({ locale }: { locale: Locale }) {
             title={targetLocale === "en" ? t.english : t.french}
           >
             {targetLocale}
-          </Link>
+          </a>
         );
       })}
     </div>
