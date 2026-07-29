@@ -5,12 +5,22 @@ import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { IndicatorView } from "@/components/data/indicator-view";
 import { getIndicator, INDICATORS } from "@/lib/data/indicators";
 import { CATEGORIES } from "@/lib/data/categories";
-import { getAvailableYears } from "@/lib/query";
+import {
+  getAvailableYearsRepository,
+  getIndicatorsRepository,
+} from "@/lib/server/data-repository";
+import { getRequestLocale } from "@/lib/server/locale";
+import {
+  getTranslations,
+  localizePath,
+  translateCategory,
+  translateIndicator,
+  translateUnit,
+} from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 
-// Pre-render every indicator page at build time; disallow unknown slugs
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -37,20 +47,31 @@ export default async function IndicatorPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const indicator = getIndicator(slug);
+  const locale = await getRequestLocale();
+  const t = getTranslations(locale);
+  const indicators = await getIndicatorsRepository(locale);
+  const indicator =
+    indicators.find((item) => item.slug === slug) ??
+    (getIndicator(slug)
+      ? translateIndicator(getIndicator(slug)!, locale)
+      : undefined);
   if (!indicator) notFound();
 
-  const category = CATEGORIES[indicator.category];
-  const years = getAvailableYears(slug);
+  const category = translateCategory(CATEGORIES[indicator.category], locale);
+  const years = await getAvailableYearsRepository(slug);
 
   return (
     <div className="content-container py-10">
       <Breadcrumbs
         items={[
-          { href: "/categories", label: "Categories" },
-          { href: `/categories/${category.slug}`, label: category.name },
+          { href: localizePath("/categories", locale), label: t.nav.categories },
+          {
+            href: localizePath(`/categories/${category.slug}`, locale),
+            label: category.name,
+          },
           { label: indicator.name },
         ]}
+        locale={locale}
       />
 
       <header className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr] lg:items-start">
@@ -74,18 +95,22 @@ export default async function IndicatorPage({
         </div>
         <aside className="rounded-lg border border-ink-200 bg-white p-5 text-sm shadow-elev-1">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <dt className="text-xs uppercase tracking-wider text-ink-500">Unit</dt>
-            <dd className="text-ink-800">{indicator.unit}</dd>
             <dt className="text-xs uppercase tracking-wider text-ink-500">
-              Updates
+              {t.common.unit}
+            </dt>
+            <dd className="text-ink-800">
+              {translateUnit(indicator.unit, locale)}
+            </dd>
+            <dt className="text-xs uppercase tracking-wider text-ink-500">
+              {t.common.updates}
             </dt>
             <dd className="text-ink-800">{indicator.updateFrequency}</dd>
             <dt className="text-xs uppercase tracking-wider text-ink-500">
-              Last updated
+              {t.common.lastUpdated}
             </dt>
             <dd className="text-ink-800">{formatDate(indicator.lastUpdated)}</dd>
             <dt className="text-xs uppercase tracking-wider text-ink-500">
-              Source
+              {t.common.source.replace(":", "")}
             </dt>
             <dd className="text-ink-800">{indicator.source}</dd>
           </dl>
@@ -96,10 +121,9 @@ export default async function IndicatorPage({
         <div className="mt-6 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>
-            The values shown for this indicator are synthetic demonstration
-            data. They preserve realistic order of magnitude so the platform
-            can be reviewed end to end — but they must not be cited. Real
-            values will replace them once ingested from the cited source.
+            {locale === "fr"
+              ? "Les valeurs affichees pour cet indicateur sont des donnees de demonstration synthetiques. Elles conservent des ordres de grandeur realistes pour permettre l'examen complet de la plateforme, mais elles ne doivent pas etre citees. Des valeurs reelles les remplaceront une fois integrees depuis la source citee."
+              : "The values shown for this indicator are synthetic demonstration data. They preserve realistic order of magnitude so the platform can be reviewed end to end, but they must not be cited. Real values will replace them once ingested from the cited source."}
           </p>
         </div>
       )}
@@ -114,20 +138,20 @@ export default async function IndicatorPage({
       <section id="methodology" className="mt-12 grid gap-6 lg:grid-cols-2">
         <div className="rounded-lg border border-ink-200 bg-white p-6 shadow-elev-1">
           <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">
-            Methodology
+            {t.common.methodology}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-ink-700">
             {indicator.methodology}
           </p>
           <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-ink-100 pt-5 text-sm">
             <dt className="text-xs uppercase tracking-wider text-ink-500">
-              License
+              {t.common.license}
             </dt>
             <dd className="text-ink-800">{indicator.license}</dd>
             {indicator.sourceUrl && (
               <>
                 <dt className="text-xs uppercase tracking-wider text-ink-500">
-                  Source URL
+                  {t.common.sourceUrl}
                 </dt>
                 <dd className="truncate">
                   <a
@@ -146,23 +170,42 @@ export default async function IndicatorPage({
 
         <div className="rounded-lg border border-ink-200 bg-white p-6 shadow-elev-1">
           <h2 className="font-display text-xl font-semibold tracking-tight text-ink-900">
-            Download this chart&rsquo;s data
+            {locale === "fr"
+              ? "Telecharger les donnees de ce graphique"
+              : "Download this chart's data"}
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-ink-700">
-            Use the <strong>Download</strong> button on the chart above to
-            export the exact series and geographies shown, filtered by year
-            range where set. Every file includes source, methodology, license,
-            and an &ldquo;exported at&rdquo; timestamp so downloads remain
-            attributable when shared.
+            {locale === "fr" ? (
+              <>
+                Utilisez le bouton <strong>Telecharger</strong> du graphique
+                ci-dessus pour exporter exactement les series et les geographies
+                affichees, avec le filtre d'annees lorsque celui-ci est defini.
+                Chaque fichier inclut la source, la methodologie, la licence et
+                un horodatage d'exportation afin que les telechargements restent
+                attribuables lorsqu'ils sont partages.
+              </>
+            ) : (
+              <>
+                Use the <strong>Download</strong> button on the chart above to
+                export the exact series and geographies shown, filtered by year
+                range where set. Every file includes source, methodology,
+                license, and an exported-at timestamp so downloads remain
+                attributable when shared.
+              </>
+            )}
           </p>
           <ul className="mt-4 space-y-2 text-sm text-ink-700">
             <li>
               <span className="font-mono text-xs text-ink-500">.csv</span>{" "}
-              — plain-text; a README block at the top records the filters
+              {locale === "fr"
+                ? "- texte brut; un bloc README au debut consigne les filtres"
+                : "- plain-text; a README block at the top records the filters"}
             </li>
             <li>
               <span className="font-mono text-xs text-ink-500">.xlsx</span>{" "}
-              — includes a separate &ldquo;Methodology&rdquo; sheet
+              {locale === "fr"
+                ? "- inclut une feuille Methodologie separee"
+                : "- includes a separate Methodology sheet"}
             </li>
           </ul>
         </div>
@@ -170,11 +213,11 @@ export default async function IndicatorPage({
 
       <div className="mt-10">
         <Link
-          href={`/categories/${category.slug}`}
+          href={localizePath(`/categories/${category.slug}`, locale)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back to {category.name}
+          {locale === "fr" ? "Retour a" : "Back to"} {category.name}
         </Link>
       </div>
     </div>

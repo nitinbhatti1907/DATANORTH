@@ -1,13 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 /**
  * Self-contained looping SVG animation that visualizes the DATANORTH story:
  * scattered data points → flow into a clean chart → community map lights up → decision arrow.
  * Plays automatically, ~10s loop, pure CSS/SVG (no video files).
  */
-export function HeroAnimation() {
+export function HeroAnimation({
+  locale = DEFAULT_LOCALE,
+}: {
+  locale?: Locale;
+}) {
+  const copy =
+    locale === "fr"
+      ? {
+          aria:
+            "Animation montrant des points de donnees disperses qui deviennent des informations claires pour les decisions communautaires",
+          scattered: "Les donnees sont dispersees.",
+          organized: "Nous les organisons en signaux clairs.",
+          answer: "REPONSE FONDEE SUR DES PREUVES",
+          decisions: "Pour prendre de meilleures decisions.",
+        }
+      : {
+          aria:
+            "Animation showing scattered data points organizing into clear insights for community decisions",
+          scattered: "Data is scattered.",
+          organized: "We organize it into clear signals.",
+          answer: "EVIDENCE-BACKED ANSWER",
+          decisions: "So you can make better decisions.",
+        };
   const [stage, setStage] = useState(0); // 0 → 1 → 2 → 3 → 0
   const ref = useRef<HTMLDivElement>(null);
   const playing = useRef(true);
@@ -50,7 +73,7 @@ export function HeroAnimation() {
     <div
       ref={ref}
       className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-ink-200 bg-gradient-to-br from-white via-nordik-50/30 to-white shadow-elev-2"
-      aria-label="Animation showing scattered data points organizing into clear insights for community decisions"
+      aria-label={copy.aria}
       role="img"
       style={{ isolation: "isolate" }}
     >
@@ -123,7 +146,7 @@ export function HeroAnimation() {
             className="hero-caption"
             fill="#475569"
           >
-            Data is scattered.
+            {copy.scattered}
           </text>
         </g>
 
@@ -184,7 +207,7 @@ export function HeroAnimation() {
             className="hero-caption"
             fill="#475569"
           >
-            We organize it into clear signals.
+            {copy.organized}
           </text>
         </g>
 
@@ -395,7 +418,7 @@ export function HeroAnimation() {
               fontFamily="var(--font-inter), sans-serif"
               letterSpacing="0.05em"
             >
-              EVIDENCE-BACKED ANSWER
+              {copy.answer}
             </text>
             <text
               x="16"
@@ -425,7 +448,7 @@ export function HeroAnimation() {
             className="hero-caption"
             fill="#475569"
           >
-            So you can make better decisions.
+            {copy.decisions}
           </text>
         </g>
       </svg>

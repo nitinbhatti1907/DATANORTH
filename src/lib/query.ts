@@ -1,6 +1,13 @@
 import { INDICATOR_VALUES, COMPOSITION_VALUES } from "@/lib/data/values";
 import { getIndicator } from "@/lib/data/indicators";
 import { getGeography } from "@/lib/data/geographies";
+import {
+  DEFAULT_LOCALE,
+  translateCompositionLabel,
+  translateGeography,
+  translateIndicator,
+  type Locale,
+} from "@/lib/i18n";
 import type { ChartDataResponse, CompositionSeries, ChartShape } from "@/types";
 
 const ORDER: Record<string, number> = {
@@ -20,10 +27,13 @@ export function queryChartData(params: {
   geographies?: string[];
   yearFrom?: number;
   yearTo?: number;
+  locale?: Locale;
 }): ChartDataResponse | null {
-  const indicator = getIndicator(params.indicatorSlug);
-  if (!indicator) return null;
-  const shape: ChartShape = indicator.shape ?? "timeseries";
+  const baseIndicator = getIndicator(params.indicatorSlug);
+  if (!baseIndicator) return null;
+  const locale = params.locale ?? DEFAULT_LOCALE;
+  const indicator = translateIndicator(baseIndicator, locale);
+  const shape: ChartShape = baseIndicator.shape ?? "timeseries";
 
   if (shape === "composition") {
     const rows = COMPOSITION_VALUES.filter(
@@ -52,14 +62,32 @@ export function queryChartData(params: {
     const composition: CompositionSeries[] = Array.from(byGeo.entries())
       .map(([code, { year, parts }]) => ({
         geographyCode: code,
-        geographyName: getGeography(code)?.name ?? code,
+        geographyName: getGeography(code)
+          ? translateGeography(getGeography(code)!, locale).name
+          : code,
         year,
-        parts: indicator.compositionCategories
-          ? indicator.compositionCategories.map(
-              (label) =>
-                parts.find((p) => p.label === label) ?? { label, value: 0 },
+        parts: baseIndicator.compositionCategories
+          ? baseIndicator.compositionCategories.map(
+              (label) => {
+                const part = parts.find((p) => p.label === label);
+                return {
+                  label: translateCompositionLabel(
+                    label,
+                    baseIndicator.slug,
+                    locale,
+                  ),
+                  value: part?.value ?? 0,
+                };
+              },
             )
-          : parts,
+          : parts.map((part) => ({
+              ...part,
+              label: translateCompositionLabel(
+                part.label,
+                baseIndicator.slug,
+                locale,
+              ),
+            })),
       }))
       .sort(
         (a, b) =>
@@ -101,7 +129,9 @@ export function queryChartData(params: {
   const series = Array.from(seriesByGeo.entries())
     .map(([code, points]) => ({
       geographyCode: code,
-      geographyName: getGeography(code)?.name ?? code,
+      geographyName: getGeography(code)
+        ? translateGeography(getGeography(code)!, locale).name
+        : code,
       points: points.sort((a, b) => a.year - b.year),
     }))
     .sort(

@@ -2,6 +2,7 @@
 
 import { Select } from "@/components/ui/controls";
 import { GEOGRAPHIES } from "@/lib/data/geographies";
+import { DEFAULT_LOCALE, getTranslations, type Locale } from "@/lib/i18n";
 import { X } from "lucide-react";
 
 export interface FilterBarValue {
@@ -15,6 +16,7 @@ export function FilterBar({
   availableYears,
   showYearRange = true,
   onChange,
+  locale = DEFAULT_LOCALE,
 }: {
   value: FilterBarValue;
   availableYears: number[];
@@ -24,7 +26,10 @@ export function FilterBar({
     yearFrom?: number;
     yearTo?: number;
   }) => void;
+  locale?: Locale;
 }) {
+  const t = getTranslations(locale).common;
+
   const toggleGeography = (code: string) => {
     const set = new Set(value.geographies);
     if (set.has(code)) set.delete(code);
@@ -40,7 +45,7 @@ export function FilterBar({
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-ink-200 bg-white p-4 shadow-elev-1">
       <div className="flex-1 min-w-[260px]">
         <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-          Geography
+          {t.geography}
         </label>
         <div className="flex flex-wrap gap-1.5">
           {selectable.map((g) => {
@@ -70,7 +75,7 @@ export function FilterBar({
         <>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-              From
+              {t.from}
             </label>
             <Select
               value={value.yearFrom ?? ""}
@@ -80,7 +85,7 @@ export function FilterBar({
                 })
               }
             >
-              <option value="">All</option>
+              <option value="">{t.all}</option>
               {availableYears.map((y) => (
                 <option key={y} value={y}>
                   {y}
@@ -91,7 +96,7 @@ export function FilterBar({
 
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-ink-500">
-              To
+              {t.to}
             </label>
             <Select
               value={value.yearTo ?? ""}
@@ -101,7 +106,7 @@ export function FilterBar({
                 })
               }
             >
-              <option value="">All</option>
+              <option value="">{t.all}</option>
               {availableYears.map((y) => (
                 <option key={y} value={y}>
                   {y}

@@ -9,6 +9,14 @@ import {
 import { GEOGRAPHIES } from "@/lib/data/geographies";
 import { INDICATORS, getIndicator } from "@/lib/data/indicators";
 import { queryChartData as queryStaticChartData } from "@/lib/query";
+import {
+  DEFAULT_LOCALE,
+  translateGeography,
+  translateIndicator,
+  translateIndicators,
+  translateLicense,
+  type Locale,
+} from "@/lib/i18n";
 import type {
   ChartDataResponse,
   ChartShape,
@@ -34,18 +42,25 @@ const GEOGRAPHY_ORDER: Record<string, number> = {
   ON: 11,
 };
 
-function toIndicator(row: IndicatorRow): Indicator {
+function localized(primary: string, fallback: string | null | undefined, locale: Locale) {
+  return locale === "fr" && fallback ? fallback : primary;
+}
+
+function toIndicator(
+  row: IndicatorRow,
+  locale: Locale = DEFAULT_LOCALE,
+): Indicator {
   return {
     slug: row.slug,
-    name: row.nameEn,
+    name: localized(row.nameEn, row.nameFr, locale),
     category: row.category as Indicator["category"],
-    description: row.descriptionEn,
+    description: localized(row.descriptionEn, row.descriptionFr, locale),
     unit: row.unit as Indicator["unit"],
     higherIsBetter: row.higherIsBetter,
-    source: row.sourceEn,
+    source: localized(row.sourceEn, row.sourceFr, locale),
     sourceUrl: row.sourceUrl,
-    methodology: row.methodologyEn,
-    license: row.license,
+    methodology: localized(row.methodologyEn, row.methodologyFr, locale),
+    license: translateLicense(row.license, locale),
     updateFrequency: row.updateFrequency as Indicator["updateFrequency"],
     lastUpdated: row.lastUpdated,
     featured: row.featured,
@@ -55,10 +70,13 @@ function toIndicator(row: IndicatorRow): Indicator {
   };
 }
 
-function toGeography(row: GeographyRow): Geography {
+function toGeography(
+  row: GeographyRow,
+  locale: Locale = DEFAULT_LOCALE,
+): Geography {
   return {
     code: row.code,
-    name: row.nameEn,
+    name: localized(row.nameEn, row.nameFr, locale),
     type: row.type as Geography["type"],
     parentCode: row.parentCode ?? undefined,
     population: row.population ?? undefined,
@@ -84,22 +102,28 @@ function currentValue(row: ValueRow): IndicatorValue {
   };
 }
 
-export async function getIndicatorsRepository(): Promise<Indicator[]> {
-  if (!hasDatabaseConfig()) return INDICATORS;
+export async function getIndicatorsRepository(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<Indicator[]> {
+  if (!hasDatabaseConfig()) return translateIndicators(INDICATORS, locale);
   const rows = await getDb()
     .select()
     .from(dbIndicators)
     .orderBy(asc(dbIndicators.category), asc(dbIndicators.slug));
-  return rows.map(toIndicator);
+  return rows.map((row) => toIndicator(row, locale));
 }
 
-export async function getGeographiesRepository(): Promise<Geography[]> {
-  if (!hasDatabaseConfig()) return GEOGRAPHIES;
+export async function getGeographiesRepository(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<Geography[]> {
+  if (!hasDatabaseConfig()) {
+    return GEOGRAPHIES.map((geography) => translateGeography(geography, locale));
+  }
   const rows = await getDb()
     .select()
     .from(dbGeographies)
     .orderBy(asc(dbGeographies.code));
-  return rows.map(toGeography);
+  return rows.map((row) => translateGeography(toGeography(row, locale), locale));
 }
 
 export async function queryChartDataRepository(params: {
@@ -107,8 +131,10 @@ export async function queryChartDataRepository(params: {
   geographies?: string[];
   yearFrom?: number;
   yearTo?: number;
+  locale?: Locale;
 }): Promise<ChartDataResponse | null> {
   if (!hasDatabaseConfig()) return queryStaticChartData(params);
+  const locale = params.locale ?? DEFAULT_LOCALE;
 
   const db = getDb();
   const [indicatorRow] = await db
@@ -119,7 +145,7 @@ export async function queryChartDataRepository(params: {
 
   if (!indicatorRow) return null;
 
-  const indicator = toIndicator(indicatorRow);
+  const indicator = translateIndicator(toIndicator(indicatorRow, locale), locale);
   const shape = indicator.shape ?? "timeseries";
   const conditions = [
     eq(indicatorValues.indicatorSlug, params.indicatorSlug),
@@ -145,7 +171,7 @@ export async function queryChartDataRepository(params: {
     .where(and(...conditions))
     .orderBy(asc(indicatorValues.geographyCode), asc(indicatorValues.year));
 
-  const geographies = await getGeographiesRepository();
+  const geographies = await getGeographiesRepository(locale);
   const geographyNames = new Map(geographies.map((g) => [g.code, g.name]));
 
   if (shape === "composition") {

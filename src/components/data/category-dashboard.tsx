@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChartPanel } from "@/components/data/chart-panel";
 import { FilterBar } from "@/components/data/filter-bar";
 import { KPITile, type KPITileData } from "@/components/data/kpi-strip";
+import { getTranslations, localeFromPath, localizePath } from "@/lib/i18n";
 import type { Category, Indicator, ChartDataResponse } from "@/types";
 
 type Variant = "comparison" | "composition-led" | "snapshot" | "index";
@@ -45,6 +46,8 @@ export function CategoryDashboard({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const locale = localeFromPath(pathname);
+  const t = getTranslations(locale).chart;
   const layout = CATEGORY_LAYOUT[category.slug] ?? { variant: "comparison" };
 
   // Filter state (geography only — applied to all charts in dashboard)
@@ -92,7 +95,10 @@ export function CategoryDashboard({
       setLoading(true);
       const results = await Promise.all(
         indicators.map(async (ind) => {
-          const params = new URLSearchParams({ indicator: ind.slug });
+          const params = new URLSearchParams({
+            indicator: ind.slug,
+            locale,
+          });
           if (geographies.length) params.set("geo", geographies.join(","));
           if (ind.shape !== "composition") {
             if (yearFrom != null) params.set("from", String(yearFrom));
@@ -123,7 +129,7 @@ export function CategoryDashboard({
     });
 
     return () => controller.abort();
-  }, [indicators, geographies, yearFrom, yearTo]);
+  }, [indicators, geographies, yearFrom, yearTo, locale]);
 
   const availableYears = useMemo(() => {
     const set = new Set<number>();
@@ -148,12 +154,16 @@ export function CategoryDashboard({
             latest: latest.value,
             previous: latest.previous,
             latestYear: latest.year,
-            href: `/indicators/${chart.indicator.slug}?geo=${geographies[0] ?? "SSM"}`,
+            href: localizePath(
+              `/indicators/${chart.indicator.slug}`,
+              locale,
+              `?geo=${geographies[0] ?? "SSM"}`,
+            ),
           },
         ];
       })
       .slice(0, 4);
-  }, [charts, geographies]);
+  }, [charts, geographies, locale]);
 
   const heroChart = layout.hero
     ? charts.find((c) => c.indicator.slug === layout.hero)
@@ -170,16 +180,16 @@ export function CategoryDashboard({
           value={{ geographies, yearFrom, yearTo }}
           availableYears={availableYears}
           onChange={onChange}
+          locale={locale}
         />
         <p className="mt-2 text-xs text-ink-500">
-          Filters apply to every chart on this dashboard. Year range only
-          affects time-series charts.
+          {t.dashboardFilters}
         </p>
       </div>
 
       {loading && (
         <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">
-          Loading data...
+          {getTranslations(locale).common.loadingData}
         </div>
       )}
 
@@ -204,6 +214,7 @@ export function CategoryDashboard({
           tiles={tiles}
           hero={heroChart}
           rest={restCharts}
+          locale={locale}
         />
       )}
       {!loading && layout.variant === "index" && (
@@ -211,6 +222,7 @@ export function CategoryDashboard({
           accent={category.accent}
           tiles={tiles}
           charts={charts}
+          locale={locale}
         />
       )}
     </div>
@@ -319,12 +331,16 @@ function SnapshotLayout({
   tiles,
   hero,
   rest,
+  locale,
 }: {
   accent: string;
   tiles: KPITileData[];
   hero?: ChartItem;
   rest: ChartItem[];
+  locale: ReturnType<typeof localeFromPath>;
 }) {
+  const t = getTranslations(locale).chart;
+
   return (
     <div className="space-y-6">
       <div
@@ -335,11 +351,11 @@ function SnapshotLayout({
         }}
       >
         <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
-          At a glance
+          {t.atAGlance}
         </div>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {tiles.map((t) => (
-            <KPITile key={t.indicator.slug} data={t} />
+            <KPITile key={t.indicator.slug} data={t} locale={locale} />
           ))}
         </div>
       </div>
@@ -358,11 +374,15 @@ function IndexLayout({
   accent,
   tiles,
   charts,
+  locale,
 }: {
   accent: string;
   tiles: KPITileData[];
   charts: ChartItem[];
+  locale: ReturnType<typeof localeFromPath>;
 }) {
+  const t = getTranslations(locale).chart;
+
   return (
     <div className="space-y-6">
       <div
@@ -374,11 +394,11 @@ function IndexLayout({
       >
         <div className="px-5 py-5">
           <div className="text-xs font-medium uppercase tracking-wider" style={{ color: accent }}>
-            Latest readings
+            {t.latestReadings}
           </div>
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {tiles.map((t) => (
-              <KPITile key={t.indicator.slug} data={t} />
+              <KPITile key={t.indicator.slug} data={t} locale={locale} />
             ))}
           </div>
         </div>

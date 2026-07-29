@@ -1,4 +1,5 @@
 import { Check, X, Minus } from "lucide-react";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 const ROWS: Array<{
   question: string;
@@ -58,7 +59,76 @@ const ROWS: Array<{
   },
 ];
 
-export function ComparisonMatrix() {
+const ROWS_FR: typeof ROWS = [
+  {
+    question: "Voir instantanement les tendances pluriannuelles",
+    datanorth: "yes",
+    statcan: "partial",
+    generalSearch: "no",
+  },
+  {
+    question: "Comparer les communautes cote a cote",
+    datanorth: "yes",
+    statcan: "partial",
+    generalSearch: "no",
+  },
+  {
+    question: "Telecharger les donnees en CSV / Excel",
+    datanorth: "yes",
+    statcan: "yes",
+    generalSearch: "no",
+  },
+  {
+    question: "Citer une seule source primaire",
+    datanorth: "partial",
+    statcan: "yes",
+    generalSearch: "no",
+    note: "Citez l'editeur original pour les travaux universitaires.",
+  },
+  {
+    question: "Donnees en temps reel / du jour meme",
+    datanorth: "no",
+    statcan: "no",
+    generalSearch: "partial",
+  },
+  {
+    question: "Granularite sous-quartier",
+    datanorth: "no",
+    statcan: "partial",
+    generalSearch: "no",
+  },
+  {
+    question: "Gratuit, aucun compte requis",
+    datanorth: "yes",
+    statcan: "yes",
+    generalSearch: "yes",
+  },
+  {
+    question: "Selectionne pour le Nord de l'Ontario",
+    datanorth: "yes",
+    statcan: "no",
+    generalSearch: "no",
+  },
+];
+
+export function ComparisonMatrix({
+  locale = DEFAULT_LOCALE,
+}: {
+  locale?: Locale;
+}) {
+  const rows = locale === "fr" ? ROWS_FR : ROWS;
+  const copy =
+    locale === "fr"
+      ? {
+          need: "Ce que vous devez faire",
+          sourcePortal: "Portail source direct",
+          generalSearch: "Recherche web generale",
+        }
+      : {
+          need: "What you need to do",
+          sourcePortal: "Source portal direct",
+          generalSearch: "General web search",
+        };
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elev-1">
       <div className="overflow-x-auto">
@@ -66,7 +136,7 @@ export function ComparisonMatrix() {
           <thead>
             <tr>
               <th className="sticky left-0 z-10 border-b border-ink-200 bg-white px-5 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-500">
-                What you need to do
+                {copy.need}
               </th>
               <th
                 className="border-b border-l border-ink-200 px-5 py-4 text-center text-xs font-semibold uppercase tracking-wider"
@@ -79,15 +149,15 @@ export function ComparisonMatrix() {
                 DATANORTH
               </th>
               <th className="border-b border-l border-ink-200 bg-ink-50/40 px-5 py-4 text-center text-xs font-semibold uppercase tracking-wider text-ink-600">
-                Source portal direct
+                {copy.sourcePortal}
               </th>
               <th className="border-b border-l border-ink-200 bg-ink-50/40 px-5 py-4 text-center text-xs font-semibold uppercase tracking-wider text-ink-600">
-                General web search
+                {copy.generalSearch}
               </th>
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row, i) => (
+            {rows.map((row, i) => (
               <tr key={i} className="group">
                 <td className="sticky left-0 z-10 border-b border-ink-100 bg-white px-5 py-4 align-top group-hover:bg-nordik-50/30">
                   <div className="text-sm font-medium text-ink-900">
@@ -114,7 +184,7 @@ export function ComparisonMatrix() {
         </table>
       </div>
       <div className="border-t border-ink-200 bg-ink-50/40 px-5 py-3 text-xs text-ink-600">
-        <Legend />
+        <Legend locale={locale} />
       </div>
     </div>
   );
@@ -154,26 +224,38 @@ function Status({
   );
 }
 
-function Legend() {
+function Legend({ locale }: { locale: Locale }) {
+  const copy =
+    locale === "fr"
+      ? {
+          yes: "Concu pour cela",
+          partial: "Possible avec un effort supplementaire",
+          no: "Non pris en charge",
+        }
+      : {
+          yes: "Built for this",
+          partial: "Possible with extra effort",
+          no: "Not supported",
+        };
   return (
     <div className="flex flex-wrap items-center gap-4">
       <div className="flex items-center gap-1.5">
         <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
           <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
         </span>
-        <span>Built for this</span>
+        <span>{copy.yes}</span>
       </div>
       <div className="flex items-center gap-1.5">
         <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 text-amber-700">
           <Minus className="h-2.5 w-2.5" strokeWidth={2.5} />
         </span>
-        <span>Possible with extra effort</span>
+        <span>{copy.partial}</span>
       </div>
       <div className="flex items-center gap-1.5">
         <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-rose-50 text-rose-600">
           <X className="h-2.5 w-2.5" strokeWidth={2.5} />
         </span>
-        <span>Not supported</span>
+        <span>{copy.no}</span>
       </div>
     </div>
   );

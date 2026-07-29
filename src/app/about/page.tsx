@@ -3,6 +3,8 @@ import Image from "next/image";
 import { CountUp } from "@/components/ui/count-up";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { TeamSection } from "@/components/team/team-section";
+import { getRequestLocale } from "@/lib/server/locale";
+import { localizePath } from "@/lib/i18n";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -13,7 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "About DATANORTH",
@@ -21,10 +23,10 @@ export const metadata = {
 };
 
 const STATS = [
-  { label: "Indicators", value: "53" },
-  { label: "Categories", value: "10" },
-  { label: "Communities", value: "7" },
-  { label: "Data sources", value: "5+" },
+  { label: "Indicators", labelFr: "Indicateurs", value: "53" },
+  { label: "Categories", labelFr: "Categories", value: "10" },
+  { label: "Communities", labelFr: "Communautes", value: "7" },
+  { label: "Data sources", labelFr: "Sources de donnees", value: "5+" },
 ];
 
 const PILLARS = [
@@ -58,7 +60,134 @@ const PILLARS = [
   },
 ];
 
-export default function AboutPage() {
+const PILLARS_FR = [
+  {
+    icon: Database,
+    title: "Collecter",
+    description:
+      "Nous reunissons des donnees communautaires essentielles provenant de sources fiables - Statistique Canada, SCHL et organismes locaux - dans un seul endroit.",
+    accent: "#164284",
+  },
+  {
+    icon: BarChart3,
+    title: "Analyser",
+    description:
+      "Les indicateurs sont organises, normalises et presentes sous forme de graphiques interactifs que chacun peut explorer, filtrer et comparer.",
+    accent: "#b45309",
+  },
+  {
+    icon: Share2,
+    title: "Partager",
+    description:
+      "Chaque graphique peut etre telecharge en CSV ou Excel avec attribution complete de la source. Les donnees sont a vous pour les utiliser, les citer et construire dessus.",
+    accent: "#047857",
+  },
+  {
+    icon: Compass,
+    title: "Soutenir les decisions",
+    description:
+      "Les communautes, organismes et chercheurs utilisent DATANORTH pour cerner les besoins, voir les ecarts et planifier avec des donnees probantes.",
+    accent: "#6d28d9",
+  },
+];
+
+const COPY = {
+  en: {
+    breadcrumb: "About",
+    eyebrow: "About the project",
+    heroPrefix: "A community data platform for",
+    heroHighlight: "Northern Ontario",
+    heroBody:
+      "DATANORTH brings local indicators across population, housing, health, labour, economy, education, and environment into one trustworthy place - with a focus on Sault Ste. Marie and the rural and small communities of the North.",
+    why: "Why we exist",
+    whyHeading: "Local data, when you need it, in a form you can use.",
+    whyP1:
+      "Communities, organizations, and local decision-makers often cannot find localized data quickly enough to use it. Information is scattered across federal portals, provincial dashboards, paywalled reports, and PDFs.",
+    whyP2:
+      "DATANORTH exists to bridge that gap: to collect, organize, analyze, and share vital data so that communities across Northern Ontario can identify needs, see gaps in services, recognize opportunities, and make decisions backed by evidence.",
+    principleLabel: "Our principle",
+    principleTitle: "Open by default",
+    principleBody:
+      "Every chart cites its source. Every dataset is downloadable. Every methodology is documented. We don't hide behind proprietary dashboards - we publish the indicators so you can verify, cite, and build on them.",
+    readMethodology: "Read our methodology",
+    whatWeDo: "What we do",
+    whatHeading: "From scattered statistics to community insight.",
+    whatBody:
+      "DATANORTH is built around four practices that turn public data into community understanding.",
+    who: "Who builds it",
+    developed: "Developed by NORDIK Institute.",
+    leadOrg: "Lead organization",
+    nordikBody:
+      "A community-based research institute at Algoma University in Sault Ste. Marie. NORDIK conducts applied research and community-engaged scholarship across Northern Ontario, with a focus on community development, social innovation, and evidence-based decision-making.",
+    datanorthProject:
+      "DATANORTH is a NORDIK project: a long-term commitment to making local data accessible, usable, and accountable.",
+    visit: "Visit nordikinstitute.com",
+    partners: "All partners",
+    next: "What's next",
+    roadmap: "The roadmap.",
+    now: "Now",
+    nowTitle: "Indicators & data",
+    nextPhase: "Next",
+    nextTitle: "Comparison tools",
+    later: "Later",
+    laterTitle: "Forecasts",
+    ctaHeading: "Start exploring the data.",
+    ctaBody:
+      "Browse indicators by category, drill into communities, compare trends, and download what you need.",
+    explore: "Explore data",
+    browse: "Browse categories",
+  },
+  fr: {
+    breadcrumb: "A propos",
+    eyebrow: "A propos du projet",
+    heroPrefix: "Une plateforme de donnees communautaires pour le",
+    heroHighlight: "Nord de l'Ontario",
+    heroBody:
+      "DATANORTH rassemble des indicateurs locaux sur la population, le logement, la sante, le travail, l'economie, l'education et l'environnement dans un seul espace fiable, avec un accent sur Sault Ste. Marie et les communautes rurales et petites du Nord.",
+    why: "Pourquoi nous existons",
+    whyHeading: "Des donnees locales, au moment voulu, dans une forme utilisable.",
+    whyP1:
+      "Les communautes, les organismes et les decideurs locaux ne trouvent souvent pas assez rapidement des donnees localisees pour les utiliser. L'information est dispersee entre portails federaux, tableaux de bord provinciaux, rapports payants et PDF.",
+    whyP2:
+      "DATANORTH existe pour combler cet ecart : collecter, organiser, analyser et partager des donnees essentielles afin que les communautes du Nord de l'Ontario puissent cerner les besoins, voir les lacunes de services, reconnaitre les occasions et prendre des decisions fondees sur des preuves.",
+    principleLabel: "Notre principe",
+    principleTitle: "Ouvert par defaut",
+    principleBody:
+      "Chaque graphique cite sa source. Chaque jeu de donnees est telechargeable. Chaque methodologie est documentee. Nous ne cachons pas les donnees derriere des tableaux de bord proprietaires : nous publions les indicateurs pour que vous puissiez les verifier, les citer et les reutiliser.",
+    readMethodology: "Lire notre methodologie",
+    whatWeDo: "Ce que nous faisons",
+    whatHeading: "Des statistiques dispersees a l'intelligence communautaire.",
+    whatBody:
+      "DATANORTH repose sur quatre pratiques qui transforment les donnees publiques en comprehension communautaire.",
+    who: "Qui le construit",
+    developed: "Developpe par NORDIK Institute.",
+    leadOrg: "Organisation responsable",
+    nordikBody:
+      "Un institut de recherche communautaire a Algoma University a Sault Ste. Marie. NORDIK mene de la recherche appliquee et engagee avec les communautes du Nord de l'Ontario, avec un accent sur le developpement communautaire, l'innovation sociale et la prise de decision fondee sur des preuves.",
+    datanorthProject:
+      "DATANORTH est un projet de NORDIK : un engagement a long terme a rendre les donnees locales accessibles, utilisables et responsables.",
+    visit: "Visiter nordikinstitute.com",
+    partners: "Tous les partenaires",
+    next: "La suite",
+    roadmap: "La feuille de route.",
+    now: "Maintenant",
+    nowTitle: "Indicateurs et donnees",
+    nextPhase: "Ensuite",
+    nextTitle: "Outils de comparaison",
+    later: "Plus tard",
+    laterTitle: "Previsions",
+    ctaHeading: "Commencez a explorer les donnees.",
+    ctaBody:
+      "Parcourez les indicateurs par categorie, ouvrez les communautes, comparez les tendances et telechargez ce dont vous avez besoin.",
+    explore: "Explorer les donnees",
+    browse: "Parcourir les categories",
+  },
+} as const;
+
+export default async function AboutPage() {
+  const locale = await getRequestLocale();
+  const copy = COPY[locale];
+  const pillars = locale === "fr" ? PILLARS_FR : PILLARS;
   return (
     <>
       {/* ============ HERO ============ */}
@@ -76,18 +205,18 @@ export default function AboutPage() {
         />
 
         <div className="content-container relative py-16 lg:py-20">
-          <Breadcrumbs items={[{ label: "About" }]} />
+          <Breadcrumbs items={[{ label: copy.breadcrumb }]} locale={locale} />
 
           <div className="mt-8 max-w-4xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-nordik-200 bg-nordik-50 px-3 py-1 text-xs font-medium uppercase tracking-wider text-nordik-700">
               <Sparkles className="h-3 w-3" aria-hidden />
-              About the project
+              {copy.eyebrow}
             </div>
             <h1 className="mt-5 font-display text-display-xl font-semibold leading-[1.02] tracking-tight text-ink-900 lg:text-[3.75rem]">
-              A community data platform for{" "}
+              {copy.heroPrefix}{" "}
               <span className="relative inline-block">
                 <span className="relative z-10 text-nordik-700">
-                  Northern Ontario
+                  {copy.heroHighlight}
                 </span>
                 <span
                   className="absolute bottom-1 left-0 right-0 -z-0 h-3 bg-nordik-100"
@@ -97,10 +226,7 @@ export default function AboutPage() {
               .
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-600 lg:text-xl">
-              DATANORTH brings local indicators across population, housing,
-              health, labour, economy, education, and environment into one
-              trustworthy place — with a focus on Sault Ste. Marie and the
-              rural and small communities of the North.
+              {copy.heroBody}
             </p>
           </div>
 
@@ -115,7 +241,7 @@ export default function AboutPage() {
                   <CountUp value={stat.value} />
                 </div>
                 <div className="mt-1 text-xs font-medium uppercase tracking-wider text-ink-500">
-                  {stat.label}
+                  {locale === "fr" ? stat.labelFr : stat.label}
                 </div>
               </div>
             ))}
@@ -128,24 +254,17 @@ export default function AboutPage() {
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:items-center">
           <div>
             <div className="text-xs font-medium uppercase tracking-wider text-nordik-700">
-              Why we exist
+              {copy.why}
             </div>
             <h2 className="mt-2 font-display text-display-lg font-semibold leading-[1.05] tracking-tight text-ink-900">
-              Local data, when you need it, in a form you can use.
+              {copy.whyHeading}
             </h2>
             <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-ink-700">
               <p>
-                Communities, organizations, and local decision-makers often
-                cannot find localized data quickly enough to use it.
-                Information is scattered across federal portals, provincial
-                dashboards, paywalled reports, and PDFs.
+                {copy.whyP1}
               </p>
               <p>
-                DATANORTH exists to bridge that gap: to collect, organize,
-                analyze, and share vital data so that communities across
-                Northern Ontario can identify needs, see gaps in services,
-                recognize opportunities, and make decisions backed by
-                evidence.
+                {copy.whyP2}
               </p>
             </div>
           </div>
@@ -159,24 +278,21 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
-                    Our principle
+                    {copy.principleLabel}
                   </div>
                   <h3 className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink-900">
-                    Open by default
+                    {copy.principleTitle}
                   </h3>
                 </div>
               </div>
               <p className="mt-5 text-[15px] leading-relaxed text-ink-700">
-                Every chart cites its source. Every dataset is downloadable.
-                Every methodology is documented. We don&rsquo;t hide behind
-                proprietary dashboards — we publish the indicators so you
-                can verify, cite, and build on them.
+                {copy.principleBody}
               </p>
               <Link
-                href="/methodology"
+                href={localizePath("/methodology", locale)}
                 className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
               >
-                Read our methodology
+                {copy.readMethodology}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             </div>
@@ -189,19 +305,18 @@ export default function AboutPage() {
         <div className="content-container py-16 lg:py-20">
           <div className="max-w-2xl">
             <div className="text-xs font-medium uppercase tracking-wider text-nordik-700">
-              What we do
+              {copy.whatWeDo}
             </div>
             <h2 className="mt-2 font-display text-display-lg font-semibold leading-[1.05] tracking-tight text-ink-900">
-              From scattered statistics to community insight.
+              {copy.whatHeading}
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-ink-600">
-              DATANORTH is built around four practices that turn public data
-              into community understanding.
+              {copy.whatBody}
             </p>
           </div>
 
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {PILLARS.map((pillar) => {
+            {pillars.map((pillar) => {
               const Icon = pillar.icon;
               return (
                 <div
@@ -238,10 +353,10 @@ export default function AboutPage() {
       <section className="content-container py-16 lg:py-20">
         <div className="max-w-3xl">
           <div className="text-xs font-medium uppercase tracking-wider text-nordik-700">
-            Who builds it
+            {copy.who}
           </div>
           <h2 className="mt-2 font-display text-display-lg font-semibold leading-[1.05] tracking-tight text-ink-900">
-            Developed by NORDIK Institute.
+            {copy.developed}
           </h2>
         </div>
 
@@ -265,7 +380,7 @@ export default function AboutPage() {
               />
               <div className="relative">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium uppercase tracking-wider text-white/95 backdrop-blur-sm">
-                  Lead organization
+                  {copy.leadOrg}
                 </div>
                 <div className="mt-6 rounded-xl bg-white p-6 shadow-elev-2">
                   <Image
@@ -292,15 +407,10 @@ export default function AboutPage() {
                   NORDIK Institute
                 </h3>
                 <p className="mt-4 text-[15px] leading-relaxed text-ink-700">
-                  A community-based research institute at Algoma University in
-                  Sault Ste. Marie. NORDIK conducts applied research and
-                  community-engaged scholarship across Northern Ontario, with a
-                  focus on community development, social innovation, and
-                  evidence-based decision-making.
+                  {copy.nordikBody}
                 </p>
                 <p className="mt-4 text-[15px] leading-relaxed text-ink-700">
-                  DATANORTH is a NORDIK project: a long-term commitment to
-                  making local data accessible, usable, and accountable.
+                  {copy.datanorthProject}
                 </p>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -310,14 +420,14 @@ export default function AboutPage() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-md bg-nordik-700 px-4 py-2 text-sm font-medium text-white shadow-elev-1 transition-colors hover:bg-nordik-800"
                 >
-                  Visit nordikinstitute.com
+                  {copy.visit}
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
                 </a>
                 <Link
-                  href="/partners"
+                  href={localizePath("/partners", locale)}
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
                 >
-                  All partners
+                  {copy.partners}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </Link>
               </div>
@@ -332,10 +442,10 @@ export default function AboutPage() {
           <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
             <div className="lg:sticky lg:top-24 lg:self-start">
               <div className="text-xs font-medium uppercase tracking-wider text-nordik-700">
-                What&rsquo;s next
+                {copy.next}
               </div>
               <h2 className="mt-2 font-display text-display-lg font-semibold leading-[1.05] tracking-tight text-ink-900">
-                The roadmap.
+                {copy.roadmap}
               </h2>
 
               {/* Vertical progress visual */}
@@ -362,10 +472,10 @@ export default function AboutPage() {
                         <span className="h-2 w-2 rounded-full bg-white" />
                       </span>
                       <div className="text-xs font-semibold uppercase tracking-wider text-nordik-700">
-                        Now
+                        {copy.now}
                       </div>
                       <div className="mt-0.5 text-sm font-medium text-ink-800">
-                        Indicators & data
+                        {copy.nowTitle}
                       </div>
                     </div>
 
@@ -378,10 +488,10 @@ export default function AboutPage() {
                         <span className="h-2 w-2 rounded-full bg-white" />
                       </span>
                       <div className="text-xs font-semibold uppercase tracking-wider text-nordik-700">
-                        Next
+                        {copy.nextPhase}
                       </div>
                       <div className="mt-0.5 text-sm font-medium text-ink-800">
-                        Comparison tools
+                        {copy.nextTitle}
                       </div>
                     </div>
 
@@ -394,10 +504,10 @@ export default function AboutPage() {
                         <span className="h-2 w-2 rounded-full bg-white" />
                       </span>
                       <div className="text-xs font-semibold uppercase tracking-wider text-nordik-700">
-                        Later
+                        {copy.later}
                       </div>
                       <div className="mt-0.5 text-sm font-medium text-ink-800">
-                        Forecasts
+                        {copy.laterTitle}
                       </div>
                     </div>
                   </div>
@@ -406,19 +516,43 @@ export default function AboutPage() {
             </div>
             <div className="space-y-6">
               <RoadmapItem
-                phase="Now"
-                title="Expand the indicator catalogue"
-                description="More indicators across every category, with real data ingested from cited sources."
+                phase={copy.now}
+                title={
+                  locale === "fr"
+                    ? "Elargir le catalogue d'indicateurs"
+                    : "Expand the indicator catalogue"
+                }
+                description={
+                  locale === "fr"
+                    ? "Davantage d'indicateurs dans chaque categorie, avec des donnees reelles integrees depuis les sources citees."
+                    : "More indicators across every category, with real data ingested from cited sources."
+                }
               />
               <RoadmapItem
-                phase="Next"
-                title="Community-comparison tools"
-                description="Side-by-side comparison views across communities, regions, and time periods."
+                phase={copy.nextPhase}
+                title={
+                  locale === "fr"
+                    ? "Outils de comparaison communautaire"
+                    : "Community-comparison tools"
+                }
+                description={
+                  locale === "fr"
+                    ? "Vues de comparaison cote a cote entre communautes, regions et periodes."
+                    : "Side-by-side comparison views across communities, regions, and time periods."
+                }
               />
               <RoadmapItem
-                phase="Later"
-                title="Forecasts and projections"
-                description="Model-generated projections with confidence bands, built on the existing historical series. Visually distinct from observed values."
+                phase={copy.later}
+                title={
+                  locale === "fr"
+                    ? "Previsions et projections"
+                    : "Forecasts and projections"
+                }
+                description={
+                  locale === "fr"
+                    ? "Projections generees par modele avec intervalles de confiance, basees sur les series historiques existantes. Elles seront visuellement distinctes des valeurs observees."
+                    : "Model-generated projections with confidence bands, built on the existing historical series. Visually distinct from observed values."
+                }
               />
             </div>
           </div>
@@ -427,7 +561,7 @@ export default function AboutPage() {
 
       {/* ============ TEAM ============ */}
       <section className="content-container py-16 lg:py-20">
-        <TeamSection />
+        <TeamSection locale={locale} />
       </section>
 
       {/* ============ CTA ============ */}
@@ -450,25 +584,24 @@ export default function AboutPage() {
             />
             <div className="relative mx-auto max-w-2xl">
               <h2 className="font-display text-display-lg font-semibold tracking-tight text-white lg:text-display-xl">
-                Start exploring the data.
+                {copy.ctaHeading}
               </h2>
               <p className="mt-4 text-lg leading-relaxed text-white/85">
-                Browse indicators by category, drill into communities, compare
-                trends, and download what you need.
+                {copy.ctaBody}
               </p>
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link
-                  href="/explore"
+                  href={localizePath("/explore", locale)}
                   className="inline-flex items-center gap-1.5 rounded-md bg-white px-5 py-3 text-sm font-semibold text-nordik-800 shadow-elev-2 transition-transform hover:-translate-y-0.5 hover:shadow-elev-3"
                 >
-                  Explore data
+                  {copy.explore}
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
                 <Link
-                  href="/categories"
+                  href={localizePath("/categories", locale)}
                   className="inline-flex items-center gap-1.5 rounded-md border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
                 >
-                  Browse categories
+                  {copy.browse}
                 </Link>
               </div>
             </div>

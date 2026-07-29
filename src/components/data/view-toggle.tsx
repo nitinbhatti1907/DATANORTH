@@ -3,13 +3,16 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { LayoutGrid, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 export function CategoryViewToggle({
   current,
   accent,
+  locale = DEFAULT_LOCALE,
 }: {
   current: "indicators" | "dashboard";
   accent: string;
+  locale?: Locale;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -26,7 +29,7 @@ export function CategoryViewToggle({
   return (
     <div
       role="tablist"
-      aria-label="View mode"
+      aria-label={locale === "fr" ? "Mode d'affichage" : "View mode"}
       className="inline-flex rounded-lg border border-ink-200 bg-white p-1 shadow-elev-1"
     >
       <button
@@ -44,7 +47,7 @@ export function CategoryViewToggle({
         }
       >
         <LayoutGrid className="h-4 w-4" aria-hidden />
-        Indicators
+        {locale === "fr" ? "Indicateurs" : "Indicators"}
       </button>
       <button
         role="tab"
@@ -61,7 +64,7 @@ export function CategoryViewToggle({
         }
       >
         <LayoutDashboard className="h-4 w-4" aria-hidden />
-        Dashboard
+        {locale === "fr" ? "Tableau de bord" : "Dashboard"}
       </button>
     </div>
   );

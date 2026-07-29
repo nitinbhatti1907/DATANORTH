@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { DEFAULT_LOCALE, localizePath, type Locale } from "@/lib/i18n";
 
 interface CaseStudy {
   number: string;
@@ -103,10 +104,119 @@ const CASES: CaseStudy[] = [
   },
 ];
 
-export function CaseStudies() {
+const CASES_FR: CaseStudy[] = [
+  {
+    number: "01",
+    question: "Ou devrions-nous ouvrir une nouvelle clinique?",
+    category: "Planification de la sante",
+    categoryColor: "#047857",
+    steps: [
+      {
+        label: "Commencer par l'offre",
+        indicator: "Medecins de famille par 10 000",
+        indicatorSlug: "physician-supply",
+        chart: "comparison",
+      },
+      {
+        label: "Verifier la demande",
+        indicator: "Tendance de la population totale",
+        indicatorSlug: "total-population",
+        chart: "trend",
+      },
+      {
+        label: "Trouver l'ecart",
+        indicator: "Patients par medecin",
+        indicatorSlug: "physician-supply",
+        chart: "ratio",
+      },
+    ],
+    insight:
+      "communautes ayant le plus grand ecart entre la croissance demographique et l'offre de medecins",
+    insightHighlight: "Sault Ste. Marie",
+  },
+  {
+    number: "02",
+    question: "Cette communaute grandit-elle ou diminue-t-elle?",
+    category: "Perspectives demographiques",
+    categoryColor: "#164284",
+    steps: [
+      {
+        label: "Trajectoire de population",
+        indicator: "Population totale",
+        indicatorSlug: "total-population",
+        chart: "trend",
+      },
+      {
+        label: "Activite des nouveaux arrivants",
+        indicator: "Immigrants recents",
+        indicatorSlug: "recent-immigrants",
+        chart: "trend",
+      },
+      {
+        label: "Demande de logements",
+        indicator: "Mises en chantier",
+        indicatorSlug: "housing-starts",
+        chart: "comparison",
+      },
+    ],
+    insight:
+      "difference entre une variation ponctuelle d'un an et une tendance soutenue sur 5 ans",
+    insightHighlight: "Croissance soutenue",
+  },
+  {
+    number: "03",
+    question: "Cette communaute peut-elle soutenir une nouvelle entreprise?",
+    category: "Taille du marche",
+    categoryColor: "#b45309",
+    steps: [
+      {
+        label: "Pouvoir d'achat",
+        indicator: "Revenu median des menages",
+        indicatorSlug: "median-household-income",
+        chart: "comparison",
+      },
+      {
+        label: "Force de la main-d'oeuvre",
+        indicator: "Taux d'emploi",
+        indicatorSlug: "employment-rate",
+        chart: "trend",
+      },
+      {
+        label: "Densite concurrentielle",
+        indicator: "Entreprises actives",
+        indicatorSlug: "business-count",
+        chart: "comparison",
+      },
+    ],
+    insight:
+      "revenu, emploi et concurrence ensemble, jamais un seul indicateur isole",
+    insightHighlight: "Croiser trois signaux",
+  },
+];
+
+export function CaseStudies({
+  locale = DEFAULT_LOCALE,
+}: {
+  locale?: Locale;
+}) {
+  const cases = locale === "fr" ? CASES_FR : CASES;
+  const copy =
+    locale === "fr"
+      ? {
+          caseLabel: "Cas",
+          step: "Etape",
+          result: "Resultat",
+          try: "Essayer cette analyse",
+        }
+      : {
+          caseLabel: "Case",
+          step: "Step",
+          result: "Result",
+          try: "Try this analysis",
+        };
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {CASES.map((c) => (
+      {cases.map((c) => (
         <article
           key={c.number}
           className="group relative flex flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-elev-1 transition-all hover:-translate-y-1 hover:shadow-elev-3"
@@ -124,7 +234,7 @@ export function CaseStudies() {
                 className="rounded-full px-2 py-0.5 text-white"
                 style={{ background: c.categoryColor }}
               >
-                Case · {c.number}
+                {copy.caseLabel} - {c.number}
               </span>
               <span className="text-ink-500">{c.category}</span>
             </div>
@@ -143,7 +253,7 @@ export function CaseStudies() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-                      Step {i + 1} · {step.label}
+                      {copy.step} {i + 1} - {step.label}
                     </div>
                     <div className="mt-0.5 truncate text-sm font-medium text-ink-800">
                       {step.indicator}
@@ -167,7 +277,7 @@ export function CaseStudies() {
             }}
           >
             <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-500">
-              Result
+              {copy.result}
             </div>
             <p className="mt-1 text-sm leading-relaxed text-ink-800">
               <span
@@ -182,10 +292,10 @@ export function CaseStudies() {
 
           {/* CTA */}
           <Link
-            href={`/indicators/${c.steps[0].indicatorSlug}`}
+            href={localizePath(`/indicators/${c.steps[0].indicatorSlug}`, locale)}
             className="flex items-center justify-between border-t border-ink-100 px-6 py-3.5 text-xs font-medium text-nordik-700 transition-colors hover:bg-nordik-50/40"
           >
-            <span>Try this analysis</span>
+            <span>{copy.try}</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </article>

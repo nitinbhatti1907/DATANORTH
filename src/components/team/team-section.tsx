@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { Linkedin, ArrowUpRight } from "lucide-react";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 
 export interface TeamMember {
   name: string;
   role: string;
+  roleFr?: string;
   affiliation?: string;
+  affiliationFr?: string;
   linkedin?: string;
   image?: string;
 }
@@ -13,41 +16,57 @@ const TEAM: TeamMember[] = [
   {
     name: "Dr. Tamanna Rimi",
     role: "Project Lead",
+    roleFr: "Responsable du projet",
     affiliation: "Director of Research, NORDIK Institute",
+    affiliationFr: "Directrice de la recherche, NORDIK Institute",
     linkedin:
       "https://linkedin.com/in/tamanna-rimi-1348b420b",
   },
   {
     name: "Dr. Ahmed Aziz",
     role: "Research Associate, NORDIK Institute",
+    roleFr: "Associe de recherche, NORDIK Institute",
     affiliation:
       "Assistant Professor, Department of Finance, Economics and Decision Sciences (FEDS), Algoma University",
+    affiliationFr:
+      "Professeur adjoint, Departement de finance, economie et sciences de la decision (FEDS), Algoma University",
     linkedin: "https://www.linkedin.com/in/ahmedtariqaziz/",
   },
   {
     name: "Dr. Zamilur Rahman",
     role: "Research Associate, NORDIK Institute",
+    roleFr: "Associe de recherche, NORDIK Institute",
     affiliation: "Assistant Professor, Department of Computer Science & Mathematics, Algoma University",
+    affiliationFr:
+      "Professeur adjoint, Departement d'informatique et de mathematiques, Algoma University",
     linkedin: "https://www.linkedin.com/in/zamiljitu/",
   },
   {
     name: "Dr. Muhammad Azam",
     role: "Research Associate, NORDIK Institute",
+    roleFr: "Associe de recherche, NORDIK Institute",
     affiliation:
       "Assistant Professor, Department of Computer Science, Algoma University",
+    affiliationFr:
+      "Professeur adjoint, Departement d'informatique, Algoma University",
     linkedin: "https://www.linkedin.com/in/muhammad-azam-ph-d-063b385b/",
   },
   {
     name: "Md. Soaib Hossain",
     role: "Project Coordinator",
+    roleFr: "Coordonnateur du projet",
     affiliation:
       "Community Economic Development and Outreach Coordinator, NORDIK Institute",
+    affiliationFr:
+      "Coordonnateur du developpement economique communautaire et de la sensibilisation, NORDIK Institute",
     linkedin: "https://www.linkedin.com/in/mdsoaibhossain/",
   },
   {
     name: "Nitin Bhatti",
     role: "Project Developer",
+    roleFr: "Developpeur du projet",
     affiliation: "Data Analyst Intern, NORDIK Institute",
+    affiliationFr: "Stagiaire analyste de donnees, NORDIK Institute",
     linkedin: "https://www.linkedin.com/in/bhattinitin/",
   },
 ];
@@ -80,24 +99,43 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function TeamSection() {
+export function TeamSection({
+  locale = DEFAULT_LOCALE,
+}: {
+  locale?: Locale;
+}) {
+  const copy =
+    locale === "fr"
+      ? {
+          eyebrow: "L'equipe",
+          heading: "Les personnes derriere DATANORTH.",
+          body: "Une petite equipe de chercheurs, d'analystes et de developpeurs de NORDIK Institute construit DATANORTH ensemble.",
+          connect: "Se connecter sur LinkedIn",
+          comingSoon: "LinkedIn a venir",
+        }
+      : {
+          eyebrow: "The team",
+          heading: "People behind DATANORTH.",
+          body: "A small team of researchers, analysts, and developers at NORDIK Institute building DATANORTH together.",
+          connect: "Connect on LinkedIn",
+          comingSoon: "LinkedIn coming soon",
+        };
   return (
     <section aria-labelledby="team-heading">
       <div className="max-w-2xl">
         <div className="text-xs font-medium uppercase tracking-wider text-nordik-700">
-          The team
+          {copy.eyebrow}
         </div>
 
         <h2
           id="team-heading"
           className="mt-2 font-display text-display-lg font-semibold leading-[1.05] tracking-tight text-ink-900"
         >
-          People behind DATANORTH.
+          {copy.heading}
         </h2>
 
         <p className="mt-4 text-[15px] leading-relaxed text-ink-600">
-          A small team of researchers, analysts, and developers at NORDIK
-          Institute building DATANORTH together.
+          {copy.body}
         </p>
       </div>
 
@@ -167,12 +205,14 @@ export function TeamSection() {
                       </div>
 
                       <div className="mt-1 text-sm font-medium text-ink-700">
-                        {m.role}
+                        {locale === "fr" ? m.roleFr ?? m.role : m.role}
                       </div>
 
                       {m.affiliation && (
                         <div className="mt-0.5 text-xs text-ink-500">
-                          {m.affiliation}
+                          {locale === "fr"
+                            ? m.affiliationFr ?? m.affiliation
+                            : m.affiliation}
                         </div>
                       )}
                     </div>
@@ -189,11 +229,11 @@ export function TeamSection() {
                         aria-label={`${m.name} on LinkedIn`}
                       >
                         <Linkedin className="h-3.5 w-3.5" aria-hidden />
-                        Connect on LinkedIn
+                        {copy.connect}
                       </Link>
                     ) : (
                       <span className="text-xs text-ink-400">
-                        LinkedIn coming soon
+                        {copy.comingSoon}
                       </span>
                     )}
 

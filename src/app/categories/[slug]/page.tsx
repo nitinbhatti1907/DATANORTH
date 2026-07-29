@@ -8,6 +8,8 @@ import {
   getIndicatorsRepository,
   getLatestValueRepository,
 } from "@/lib/server/data-repository";
+import { getRequestLocale } from "@/lib/server/locale";
+import { getTranslations, localizePath, translateCategory } from "@/lib/i18n";
 import { ArrowLeft } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +39,13 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const category = getCategory(slug);
-  if (!category) notFound();
+  const baseCategory = getCategory(slug);
+  if (!baseCategory) notFound();
+  const locale = await getRequestLocale();
+  const category = translateCategory(baseCategory, locale);
+  const t = getTranslations(locale);
 
-  const allIndicators = await getIndicatorsRepository();
+  const allIndicators = await getIndicatorsRepository(locale);
   const indicators = allIndicators.filter((indicator) => indicator.category === slug);
   const tiles = (
     await Promise.all(
@@ -52,7 +57,7 @@ export default async function CategoryPage({
           latest: latest.value,
           previous: latest.previous,
           latestYear: latest.year,
-          href: `/indicators/${ind.slug}?geo=SSM`,
+          href: localizePath(`/indicators/${ind.slug}`, locale, "?geo=SSM"),
         };
       }),
     )
@@ -70,9 +75,13 @@ export default async function CategoryPage({
         <div className="content-container py-10">
           <Breadcrumbs
             items={[
-              { href: "/categories", label: "Categories" },
+              {
+                href: localizePath("/categories", locale),
+                label: t.nav.categories,
+              },
               { label: category.name },
             ]}
+            locale={locale}
           />
           <div className="mt-6 grid gap-8 md:grid-cols-[2fr_1fr] md:items-end">
             <div>
@@ -84,7 +93,7 @@ export default async function CategoryPage({
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: category.accent }}
                 />
-                Category
+                {t.chart.category}
               </div>
               <h1 className="mt-2 font-display text-display-xl font-semibold leading-[1.02] tracking-tight text-ink-900">
                 {category.name}
@@ -116,13 +125,13 @@ export default async function CategoryPage({
       {tiles.length > 0 && (
         <section className="content-container py-10">
           <div className="text-xs font-medium uppercase tracking-wider text-ink-500">
-            Sault Ste. Marie · snapshot
+            {locale === "fr" ? "Sault Ste. Marie - apercu" : "Sault Ste. Marie - snapshot"}
           </div>
           <h2 className="mt-2 font-display text-display-sm font-semibold tracking-tight text-ink-900">
-            Featured indicators
+            {locale === "fr" ? "Indicateurs en vedette" : "Featured indicators"}
           </h2>
           <div className="mt-6">
-            <KPIStrip tiles={tiles} />
+            <KPIStrip tiles={tiles} locale={locale} />
           </div>
         </section>
       )}
@@ -132,16 +141,17 @@ export default async function CategoryPage({
         <CategoryContent
           category={category}
           indicators={indicators}
+          locale={locale}
         />
       </Suspense>
 
       <div className="content-container pb-10">
         <Link
-          href="/categories"
+          href={localizePath("/categories", locale)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-nordik-700 link-underline"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back to all categories
+          {locale === "fr" ? "Retour a toutes les categories" : "Back to all categories"}
         </Link>
       </div>
     </>

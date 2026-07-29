@@ -4,15 +4,23 @@ import type { Indicator } from "@/types";
 import { CATEGORIES } from "@/lib/data/categories";
 import { getLatestValue } from "@/lib/query";
 import { formatUnit, formatDelta } from "@/lib/format";
+import {
+  DEFAULT_LOCALE,
+  localizePath,
+  translateCategory,
+  type Locale,
+} from "@/lib/i18n";
 
 export function IndicatorCard({
   indicator,
   geographyCode = "SSM",
+  locale = DEFAULT_LOCALE,
 }: {
   indicator: Indicator;
   geographyCode?: string;
+  locale?: Locale;
 }) {
-  const cat = CATEGORIES[indicator.category];
+  const cat = translateCategory(CATEGORIES[indicator.category], locale);
   const latest = getLatestValue(indicator.slug, geographyCode);
   const delta =
     latest && latest.previous != null
@@ -21,7 +29,11 @@ export function IndicatorCard({
 
   return (
     <Link
-      href={`/indicators/${indicator.slug}?geo=${geographyCode}`}
+      href={localizePath(
+        `/indicators/${indicator.slug}`,
+        locale,
+        `?geo=${geographyCode}`,
+      )}
       className="group relative flex flex-col overflow-hidden rounded-lg border border-ink-200 bg-white p-5 shadow-elev-1 transition-all hover:-translate-y-0.5 hover:shadow-elev-3 hover:border-nordik-200"
     >
       <span
@@ -69,7 +81,9 @@ export function IndicatorCard({
           </div>
         </div>
       ) : (
-        <div className="mt-4 text-sm text-ink-500">No recent data</div>
+        <div className="mt-4 text-sm text-ink-500">
+          {locale === "fr" ? "Aucune donnee recente" : "No recent data"}
+        </div>
       )}
     </Link>
   );

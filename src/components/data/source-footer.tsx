@@ -1,23 +1,33 @@
 import Link from "next/link";
 import { ArrowUpRight, Info, Clock } from "lucide-react";
 import type { Indicator } from "@/types";
-import { formatDate } from "@/lib/format";
+import { formatDateLocale } from "@/lib/format";
+import {
+  DEFAULT_LOCALE,
+  getTranslations,
+  localizePath,
+  type Locale,
+} from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 
 export function SourceFooter({
   indicator,
   className,
+  locale = DEFAULT_LOCALE,
 }: {
   indicator: Indicator;
   className?: string;
+  locale?: Locale;
 }) {
+  const t = getTranslations(locale).common;
+
   return (
     <div
       className={`flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-ink-100 px-5 py-3 text-xs text-ink-500 ${className ?? ""}`}
     >
       <div className="flex items-center gap-1.5">
         <Info className="h-3.5 w-3.5" aria-hidden />
-        <span>Source:</span>
+        <span>{t.source}</span>
         {indicator.sourceUrl ? (
           <a
             href={indicator.sourceUrl}
@@ -34,17 +44,19 @@ export function SourceFooter({
       </div>
       <div className="flex items-center gap-1.5">
         <Clock className="h-3.5 w-3.5" aria-hidden />
-        <span>Updated {formatDate(indicator.lastUpdated)}</span>
+        <span>
+          {t.updated} {formatDateLocale(indicator.lastUpdated, locale)}
+        </span>
       </div>
       <div className="flex items-center gap-1.5">
         <span>{indicator.updateFrequency}</span>
       </div>
-      {indicator.isSample && <Badge variant="sample">Sample data</Badge>}
+      {indicator.isSample && <Badge variant="sample">{t.sampleData}</Badge>}
       <Link
-        href={`/indicators/${indicator.slug}#methodology`}
+        href={`${localizePath(`/indicators/${indicator.slug}`, locale)}#methodology`}
         className="ml-auto font-medium text-nordik-700 hover:text-nordik-800"
       >
-        Methodology →
+        {t.methodologyArrow}
       </Link>
     </div>
   );

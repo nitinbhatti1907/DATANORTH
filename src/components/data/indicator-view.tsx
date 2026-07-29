@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useTransition } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChartPanel } from "@/components/data/chart-panel";
 import { FilterBar } from "@/components/data/filter-bar";
+import { getTranslations, localeFromPath } from "@/lib/i18n";
 import type { ChartDataResponse, Indicator } from "@/types";
 
 export function IndicatorView({
@@ -15,6 +16,8 @@ export function IndicatorView({
 }) {
   const pathname = usePathname();
   const params = useSearchParams();
+  const locale = localeFromPath(pathname);
+  const t = getTranslations(locale).common;
 
   const initialGeos = (params?.get("geo") ?? "").split(",").filter(Boolean);
   const initialFrom = params?.get("from");
@@ -65,7 +68,10 @@ export function IndicatorView({
 
   useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams({ indicator: indicator.slug });
+    const params = new URLSearchParams({
+      indicator: indicator.slug,
+      locale,
+    });
     if (geographies.length) params.set("geo", geographies.join(","));
     if (yearFrom != null) params.set("from", String(yearFrom));
     if (yearTo != null) params.set("to", String(yearTo));
@@ -84,7 +90,7 @@ export function IndicatorView({
       });
 
     return () => controller.abort();
-  }, [indicator.slug, geographies, yearFrom, yearTo]);
+  }, [indicator.slug, geographies, yearFrom, yearTo, locale]);
 
   const isComposition = indicator.shape === "composition";
 
@@ -98,23 +104,24 @@ export function IndicatorView({
   return (
     <>
       <div className="mt-8">
-        <FilterBar
-          value={{ geographies, yearFrom, yearTo }}
-          availableYears={availableYears}
-          showYearRange={!isComposition}
-          onChange={onChange}
-        />
+          <FilterBar
+            value={{ geographies, yearFrom, yearTo }}
+            availableYears={availableYears}
+            showYearRange={!isComposition}
+            onChange={onChange}
+            locale={locale}
+          />
       </div>
       <div className="mt-6">
         {loading ? (
           <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">
-            Loading data...
+            {t.loadingData}
           </div>
         ) : hasData ? (
           <ChartPanel data={chartData!} height={420} />
         ) : (
           <div className="rounded-lg border border-ink-200 bg-white p-10 text-center text-ink-600 shadow-elev-1">
-            No data matches the current filters. Try adding a geography.
+            {t.noData}
           </div>
         )}
       </div>

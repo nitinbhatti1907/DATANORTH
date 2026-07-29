@@ -13,6 +13,11 @@ const df = new Intl.DateTimeFormat("en-CA", {
   month: "short",
   day: "numeric",
 });
+const dfFr = new Intl.DateTimeFormat("fr-CA", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 
 export function formatNumber(n: number | null | undefined) {
   if (n == null || Number.isNaN(n)) return "—";
@@ -42,6 +47,11 @@ export function formatCompact(n: number | null | undefined) {
 
 export function formatDate(d: string | Date) {
   return df.format(typeof d === "string" ? new Date(d) : d);
+}
+
+export function formatDateLocale(d: string | Date, locale: "en" | "fr" = "en") {
+  const date = typeof d === "string" ? new Date(d) : d;
+  return locale === "fr" ? dfFr.format(date) : df.format(date);
 }
 
 export function formatUnit(value: number, unit: string): string {

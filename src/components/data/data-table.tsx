@@ -14,6 +14,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { Input } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
+import { DEFAULT_LOCALE, getTranslations, type Locale } from "@/lib/i18n";
 
 interface DataTableProps<T> {
   columns: ColumnDef<T>[];
@@ -22,16 +23,25 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   downloadFilename?: string;
   initialPageSize?: number;
+  locale?: Locale;
 }
 
 export function DataTable<T>({
   columns,
   data,
   title,
-  searchPlaceholder = "Search…",
+  searchPlaceholder,
   downloadFilename = "datanorth-table",
   initialPageSize = 25,
+  locale = DEFAULT_LOCALE,
 }: DataTableProps<T>) {
+  const t = getTranslations(locale).common;
+  const effectiveSearchPlaceholder =
+    searchPlaceholder ?? (locale === "fr" ? "Rechercher..." : "Search...");
+  const copy =
+    locale === "fr"
+      ? { noResults: "Aucun resultat.", filteredBy: "filtre par" }
+      : { noResults: "No results.", filteredBy: "filtered by" };
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -90,7 +100,7 @@ export function DataTable<T>({
             <Input
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={effectiveSearchPlaceholder}
               className="h-9 w-56 pl-8"
             />
           </div>
@@ -158,7 +168,7 @@ export function DataTable<T>({
                   colSpan={columns.length}
                   className="px-4 py-10 text-center text-ink-500"
                 >
-                  No results.
+                  {copy.noResults}
                 </td>
               </tr>
             ) : (
@@ -184,9 +194,9 @@ export function DataTable<T>({
 
       <div className="flex items-center justify-between border-t border-ink-100 px-4 py-2.5 text-xs text-ink-500">
         <span>
-          {filtered.length.toLocaleString()} row
-          {filtered.length === 1 ? "" : "s"}
-          {globalFilter && ` · filtered by "${globalFilter}"`}
+          {filtered.length.toLocaleString()}{" "}
+          {filtered.length === 1 ? t.row : t.rows}
+          {globalFilter && ` - ${copy.filteredBy} "${globalFilter}"`}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -195,7 +205,7 @@ export function DataTable<T>({
             className="inline-flex h-7 items-center gap-1 rounded-md border border-ink-200 bg-white px-2 text-ink-700 disabled:opacity-40"
           >
             <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-            Prev
+            {t.previous}
           </button>
           <span className="font-mono">
             {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
@@ -205,7 +215,7 @@ export function DataTable<T>({
             disabled={!table.getCanNextPage()}
             className="inline-flex h-7 items-center gap-1 rounded-md border border-ink-200 bg-white px-2 text-ink-700 disabled:opacity-40"
           >
-            Next
+            {t.next}
             <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>

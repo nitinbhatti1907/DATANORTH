@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatUnit, formatDelta } from "@/lib/format";
+import { DEFAULT_LOCALE, getTranslations, type Locale } from "@/lib/i18n";
 import type { Indicator } from "@/types";
 
 export interface KPITileData {
@@ -11,7 +12,14 @@ export interface KPITileData {
   href?: string;
 }
 
-export function KPITile({ data }: { data: KPITileData }) {
+export function KPITile({
+  data,
+  locale = DEFAULT_LOCALE,
+}: {
+  data: KPITileData;
+  locale?: Locale;
+}) {
+  const t = getTranslations(locale).common;
   const delta = data.previous != null
     ? formatDelta(data.latest, data.previous)
     : null;
@@ -41,7 +49,7 @@ export function KPITile({ data }: { data: KPITileData }) {
         </div>
         {data.indicator.isSample && (
           <span className="whitespace-nowrap rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
-            sample
+            {t.sample}
           </span>
         )}
       </div>
@@ -54,7 +62,7 @@ export function KPITile({ data }: { data: KPITileData }) {
           <span className={cn("flex items-center gap-1 font-medium", deltaColor)}>
             <DeltaIcon className="h-3 w-3" aria-hidden />
             {delta.display}
-            <span className="font-normal text-ink-500"> yoy</span>
+            <span className="font-normal text-ink-500"> {t.yoy}</span>
           </span>
         )}
       </div>
@@ -73,11 +81,17 @@ export function KPITile({ data }: { data: KPITileData }) {
   return <div className={base}>{content}</div>;
 }
 
-export function KPIStrip({ tiles }: { tiles: KPITileData[] }) {
+export function KPIStrip({
+  tiles,
+  locale = DEFAULT_LOCALE,
+}: {
+  tiles: KPITileData[];
+  locale?: Locale;
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger">
       {tiles.map((t) => (
-        <KPITile key={t.indicator.slug + t.latestYear} data={t} />
+        <KPITile key={t.indicator.slug + t.latestYear} data={t} locale={locale} />
       ))}
     </div>
   );

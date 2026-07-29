@@ -4,6 +4,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { getTranslations, type Locale } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/server/locale";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,34 +49,43 @@ export const metadata: Metadata = {
   },
 };
 
-function AppChrome({ children }: { children: React.ReactNode }) {
+function AppChrome({
+  children,
+  locale,
+}: {
+  children: React.ReactNode;
+  locale: Locale;
+}) {
+  const t = getTranslations(locale).common;
+
   return (
     <body className="font-sans text-ink-900 antialiased">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-nordik-700 focus:px-4 focus:py-2 focus:text-white"
       >
-        Skip to main content
+        {t.skipToMain}
       </a>
-      <SiteHeader />
+      <SiteHeader locale={locale} />
       <main id="main" className="min-h-[calc(100vh-200px)]">
         {children}
       </main>
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </body>
   );
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const content = <AppChrome>{children}</AppChrome>;
+  const locale = await getRequestLocale();
+  const content = <AppChrome locale={locale}>{children}</AppChrome>;
 
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${inter.variable} ${fraunces.variable} ${jetbrains.variable}`}
       suppressHydrationWarning
     >

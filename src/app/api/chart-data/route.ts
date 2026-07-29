@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { queryChartDataRepository } from "@/lib/server/data-repository";
+import { LOCALE_HEADER, normalizeLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,16 @@ export async function GET(req: Request) {
   const geographies = geoParam ? geoParam.split(",").filter(Boolean) : undefined;
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const locale = normalizeLocale(
+    searchParams.get("locale") ?? req.headers.get(LOCALE_HEADER),
+  );
 
   const data = await queryChartDataRepository({
     indicatorSlug: slug,
     geographies,
     yearFrom: from ? Number(from) : undefined,
     yearTo: to ? Number(to) : undefined,
+    locale,
   });
 
   if (!data) {

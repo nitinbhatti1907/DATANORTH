@@ -4,11 +4,19 @@ import { useState, useRef, useEffect } from "react";
 import { Download, FileSpreadsheet, FileText, Link as LinkIcon, Check } from "lucide-react";
 import type { ChartDataResponse } from "@/types";
 import { downloadCSV, downloadExcel } from "@/lib/download";
+import { DEFAULT_LOCALE, getTranslations, type Locale } from "@/lib/i18n";
 
-export function DownloadMenu({ data }: { data: ChartDataResponse }) {
+export function DownloadMenu({
+  data,
+  locale = DEFAULT_LOCALE,
+}: {
+  data: ChartDataResponse;
+  locale?: Locale;
+}) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const t = getTranslations(locale).chart;
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -36,7 +44,7 @@ export function DownloadMenu({ data }: { data: ChartDataResponse }) {
         aria-expanded={open}
       >
         <Download className="h-4 w-4" aria-hidden />
-        Download
+        {t.download}
       </button>
       {open && (
         <div
@@ -53,9 +61,9 @@ export function DownloadMenu({ data }: { data: ChartDataResponse }) {
           >
             <FileText className="h-4 w-4 text-nordik-700" aria-hidden />
             <div>
-              <div className="font-medium">Download CSV</div>
+              <div className="font-medium">{t.downloadCsv}</div>
               <div className="text-xs text-ink-500">
-                With active filters &amp; source
+                {t.csvHelp}
               </div>
             </div>
           </button>
@@ -69,9 +77,9 @@ export function DownloadMenu({ data }: { data: ChartDataResponse }) {
           >
             <FileSpreadsheet className="h-4 w-4 text-emerald-700" aria-hidden />
             <div>
-              <div className="font-medium">Download Excel</div>
+              <div className="font-medium">{t.downloadExcel}</div>
               <div className="text-xs text-ink-500">
-                Includes methodology sheet
+                {t.excelHelp}
               </div>
             </div>
           </button>
@@ -90,10 +98,10 @@ export function DownloadMenu({ data }: { data: ChartDataResponse }) {
             )}
             <div>
               <div className="font-medium">
-                {copied ? "Link copied" : "Copy link"}
+                {copied ? t.linkCopied : t.copyLink}
               </div>
               <div className="text-xs text-ink-500">
-                Filters included in URL
+                {t.linkHelp}
               </div>
             </div>
           </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   AreaChart,
@@ -17,12 +18,13 @@ import { DownloadMenu } from "./download-menu";
 import { SourceFooter } from "./source-footer";
 import { cn } from "@/lib/utils";
 import { formatUnit } from "@/lib/format";
+import { getTranslations, localeFromPath } from "@/lib/i18n";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[360px] items-center justify-center text-sm text-ink-500">
-      Loading chart…
+    <div className="flex h-[360px] items-center justify-center">
+      <div className="h-8 w-8 animate-pulse rounded-full bg-ink-100" />
     </div>
   ),
 });
@@ -47,14 +49,20 @@ const VIZ_COLORS = [
   "#c2410c",
 ];
 
-const VIEW_META: Record<View, { label: string; icon: React.ElementType }> = {
-  line: { label: "Line", icon: LineChart },
-  bar: { label: "Bar", icon: BarChart3 },
-  area: { label: "Area", icon: AreaChart },
-  "stacked-bar": { label: "Stacked", icon: Layers },
-  pie: { label: "Pie", icon: PieIcon },
-  donut: { label: "Donut", icon: CircleDot },
-  table: { label: "Table", icon: Table },
+const VIEW_META: Record<
+  View,
+  {
+    labelKey: "line" | "bar" | "area" | "stacked" | "pie" | "donut" | "table";
+    icon: React.ElementType;
+  }
+> = {
+  line: { labelKey: "line", icon: LineChart },
+  bar: { labelKey: "bar", icon: BarChart3 },
+  area: { labelKey: "area", icon: AreaChart },
+  "stacked-bar": { labelKey: "stacked", icon: Layers },
+  pie: { labelKey: "pie", icon: PieIcon },
+  donut: { labelKey: "donut", icon: CircleDot },
+  table: { labelKey: "table", icon: Table },
 };
 
 // Maximum communities a pie/donut grid will render before we cap.
@@ -87,6 +95,9 @@ export function ChartPanel({
   height?: number;
   className?: string;
 }) {
+  const pathname = usePathname();
+  const locale = localeFromPath(pathname);
+  const t = getTranslations(locale);
   const seriesCount =
     data.shape === "composition"
       ? data.composition?.length ?? 0
@@ -149,8 +160,13 @@ export function ChartPanel({
           {data.indicator.description}
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <ViewToggle views={allowed} view={view} onChange={setView} />
-          <DownloadMenu data={data} />
+          <ViewToggle
+            views={allowed}
+            view={view}
+            onChange={setView}
+            locale={locale}
+          />
+          <DownloadMenu data={data} locale={locale} />
         </div>
       </header>
 
@@ -158,16 +174,14 @@ export function ChartPanel({
         <div className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-5 py-2.5 text-xs text-amber-900">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
-            Pie charts compare up to {PIE_LIMIT} communities at a time. Showing
-            the first {PIE_LIMIT}. Switch to <strong>Bar</strong> or{" "}
-            <strong>Stacked</strong> to see all selected communities.
+            {t.chart.pieLimit.replaceAll("{limit}", String(PIE_LIMIT))}
           </span>
         </div>
       )}
 
       <div className="px-2 pt-3 pb-1 echarts-override" ref={chartBoxRef}>
         {view === "table" ? (
-          <TableView data={data} />
+          <TableView data={data} locale={locale} />
         ) : (
           <ReactECharts
             option={option}
@@ -179,7 +193,7 @@ export function ChartPanel({
         )}
       </div>
 
-      <SourceFooter indicator={data.indicator} />
+      <SourceFooter indicator={data.indicator} locale={locale} />
     </section>
   );
 }
@@ -188,20 +202,25 @@ function ViewToggle({
   views,
   view,
   onChange,
+  locale,
 }: {
   views: View[];
   view: View;
   onChange: (v: View) => void;
+  locale: ReturnType<typeof localeFromPath>;
 }) {
+  const t = getTranslations(locale).chart;
+
   return (
     <div
       role="tablist"
-      aria-label="Chart view"
+      aria-label={t.viewLabel}
       className="inline-flex flex-nowrap whitespace-nowrap rounded-md border border-ink-200 bg-white p-0.5 shadow-elev-1"
     >
       {views.map((v) => {
         const meta = VIEW_META[v];
         const Icon = meta.icon;
+        const label = t[meta.labelKey];
         const active = view === v;
         return (
           <button
@@ -215,10 +234,10 @@ function ViewToggle({
                 ? "bg-nordik-700 text-white"
                 : "text-ink-600 hover:bg-ink-100",
             )}
-            title={meta.label}
+            title={label}
           >
             <Icon className="h-3.5 w-3.5" aria-hidden />
-            <span className="hidden md:inline">{meta.label}</span>
+            <span className="hidden md:inline">{label}</span>
           </button>
         );
       })}
@@ -226,7 +245,15 @@ function ViewToggle({
   );
 }
 
-function TableView({ data }: { data: ChartDataResponse }) {
+function TableView({
+  data,
+  locale,
+}: {
+  data: ChartDataResponse;
+  locale: ReturnType<typeof localeFromPath>;
+}) {
+  const t = getTranslations(locale).common;
+
   if (data.shape === "composition" && data.composition) {
     const labels =
       data.indicator.compositionCategories ??
@@ -239,7 +266,7 @@ function TableView({ data }: { data: ChartDataResponse }) {
           <thead>
             <tr>
               <th className="sticky left-0 z-10 border-b border-ink-200 bg-white px-3 py-2 text-left font-medium text-ink-600">
-                Geography
+                {t.geography}
               </th>
               {labels.map((l) => (
                 <th
@@ -289,7 +316,7 @@ function TableView({ data }: { data: ChartDataResponse }) {
         <thead>
           <tr>
             <th className="sticky left-0 z-10 border-b border-ink-200 bg-white px-3 py-2 text-left font-medium text-ink-600">
-              Geography
+                {t.geography}
             </th>
             {years.map((y) => (
               <th
