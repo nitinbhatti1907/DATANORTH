@@ -43,8 +43,8 @@ const TEAM: TeamMember[] = [
   },
   {
     name: "Dr. Muhammad Azam",
-    role: "Research Associate, NORDIK Institute",
-    roleFr: "Associe de recherche, NORDIK Institute",
+    role: "Faculty Supervisor",
+    roleFr: "Faculty Supervisor",
     affiliation:
       "Assistant Professor, Department of Computer Science, Algoma University",
     affiliationFr:
