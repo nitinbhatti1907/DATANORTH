@@ -1,7 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import Papa from "papaparse";
 import { getDb, hasDatabaseConfig } from "@/db/client";
-import { dataUploads, indicatorValues } from "@/db/schema";
+import { dataUploads, indicators, indicatorValues } from "@/db/schema";
 
 export type UploadPreviewRow = {
   indicator_slug: string;
@@ -23,8 +23,9 @@ export type UploadValidationResult = {
 };
 
 type RawRow = Record<string, unknown>;
+export type ImportMode = "replace" | "extend";
 
-const REQUIRED_COLUMNS = ["indicator_slug", "geography_code", "year", "value"];
+const REQUIRED_COLUMNS = ["geography_code", "year", "value"];
 
 function normalizeKey(key: string) {
   return key.trim().toLowerCase().replace(/\s+/g, "_");
@@ -72,19 +73,22 @@ export async function parseUploadFile(file: File): Promise<RawRow[]> {
 
 export function validateUploadRows(
   rawRows: RawRow[],
-  defaults: { indicatorSlug?: string; geographyCode?: string } = {},
+  defaults: { indicatorSlug?: string } = {},
 ): UploadValidationResult {
   const rows: UploadPreviewRow[] = [];
   const errors: string[] = [];
+  const seenKeys = new Set<string>();
 
   rawRows.forEach((raw, index) => {
     const row = normalizeRawRow(raw);
     const rowNumber = index + 2;
     const missing = REQUIRED_COLUMNS.filter((column) => {
-      if (column === "indicator_slug" && defaults.indicatorSlug) return false;
-      if (column === "geography_code" && defaults.geographyCode) return false;
       return row[column] == null || row[column] === "";
     });
+
+    if (!defaults.indicatorSlug && (row.indicator_slug == null || row.indicator_slug === "")) {
+      missing.push("indicator_slug");
+    }
 
     if (missing.length) {
       errors.push(`Row ${rowNumber}: missing ${missing.join(", ")}`);
@@ -98,9 +102,17 @@ export function validateUploadRows(
       return;
     }
 
-    rows.push({
-      indicator_slug: String(row.indicator_slug || defaults.indicatorSlug),
-      geography_code: String(row.geography_code || defaults.geographyCode),
+    const indicatorSlug = String(row.indicator_slug || defaults.indicatorSlug);
+    if (defaults.indicatorSlug && indicatorSlug !== defaults.indicatorSlug) {
+      errors.push(
+        `Row ${rowNumber}: indicator_slug must match selected indicator ${defaults.indicatorSlug}`,
+      );
+      return;
+    }
+
+    const parsedRow = {
+      indicator_slug: indicatorSlug,
+      geography_code: String(row.geography_code),
       year,
       value,
       label: row.label ? String(row.label) : undefined,
@@ -110,10 +122,121 @@ export function validateUploadRows(
       confidence_high: asNumber(row.confidence_high),
       is_forecast: asBoolean(row.is_forecast),
       model_id: row.model_id ? String(row.model_id) : undefined,
-    });
+    };
+
+    const duplicateKey = getRowKey(parsedRow);
+    if (seenKeys.has(duplicateKey)) {
+      errors.push(
+        `Row ${rowNumber}: duplicate record for ${parsedRow.geography_code}, ${parsedRow.year}${
+          parsedRow.label ? `, ${parsedRow.label}` : ""
+        }`,
+      );
+      return;
+    }
+    seenKeys.add(duplicateKey);
+    rows.push(parsedRow);
   });
 
   return { rows, errors };
+}
+
+function getRowKey(row: UploadPreviewRow) {
+  return [
+    row.indicator_slug,
+    row.geography_code,
+    row.year,
+    row.quarter ?? "",
+    row.month ?? "",
+    row.label ?? "",
+  ].join("||");
+}
+
+export async function findCurrentConflicts(rows: UploadPreviewRow[]) {
+  if (!rows.length || !hasDatabaseConfig()) return [];
+  const indicatorSlug = rows[0]?.indicator_slug;
+  if (!indicatorSlug) return [];
+
+  const db = getDb();
+  const currentRows = await db
+    .select({
+      indicator_slug: indicatorValues.indicatorSlug,
+      geography_code: indicatorValues.geographyCode,
+      year: indicatorValues.year,
+      quarter: indicatorValues.quarter,
+      month: indicatorValues.month,
+      label: indicatorValues.label,
+      value: indicatorValues.value,
+    })
+    .from(indicatorValues)
+    .where(
+      and(
+        eq(indicatorValues.indicatorSlug, indicatorSlug),
+        eq(indicatorValues.isCurrent, true),
+      ),
+    );
+
+  const currentKeys = new Set(
+    currentRows.map((row) =>
+      getRowKey({
+        indicator_slug: row.indicator_slug,
+        geography_code: row.geography_code,
+        year: row.year,
+        quarter: row.quarter ?? undefined,
+        month: row.month ?? undefined,
+        label: row.label ?? undefined,
+        value: Number(row.value),
+      }),
+    ),
+  );
+
+  return rows
+    .filter((row) => currentKeys.has(getRowKey(row)))
+    .slice(0, 50)
+    .map(
+      (row) =>
+        `${row.indicator_slug} ${row.geography_code} ${row.year}${
+          row.label ? ` ${row.label}` : ""
+        } already exists in current data.`,
+    );
+}
+
+export async function exportCurrentIndicatorCsv(indicatorSlug: string) {
+  if (!hasDatabaseConfig()) {
+    throw new Error("DATABASE_URL is not configured.");
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      indicator_slug: indicatorValues.indicatorSlug,
+      geography_code: indicatorValues.geographyCode,
+      year: indicatorValues.year,
+      quarter: indicatorValues.quarter,
+      month: indicatorValues.month,
+      label: indicatorValues.label,
+      value: indicatorValues.value,
+      confidence_low: indicatorValues.confidenceLow,
+      confidence_high: indicatorValues.confidenceHigh,
+      is_forecast: indicatorValues.isForecast,
+      model_id: indicatorValues.modelId,
+      ingested_at: indicatorValues.ingestedAt,
+      ingested_by: indicatorValues.ingestedBy,
+      upload_id: indicatorValues.uploadId,
+    })
+    .from(indicatorValues)
+    .where(
+      and(
+        eq(indicatorValues.indicatorSlug, indicatorSlug),
+        eq(indicatorValues.isCurrent, true),
+      ),
+    )
+    .orderBy(
+      asc(indicatorValues.geographyCode),
+      asc(indicatorValues.year),
+      asc(indicatorValues.label),
+    );
+
+  return Papa.unparse(rows);
 }
 
 export async function ingestUpload(params: {
@@ -122,14 +245,24 @@ export async function ingestUpload(params: {
   rows: UploadPreviewRow[];
   uploadedBy: string;
   category?: string;
-  indicatorSlug?: string;
-  geographyCode?: string;
+  indicatorSlug: string;
+  importMode: ImportMode;
+  sourceUrl?: string;
 }) {
   if (!hasDatabaseConfig()) {
     throw new Error("DATABASE_URL is not configured.");
   }
   if (process.env.ADMIN_UPLOADS_ENABLED !== "true") {
     throw new Error("ADMIN_UPLOADS_ENABLED must be true before writes are allowed.");
+  }
+
+  if (params.importMode === "extend") {
+    const conflicts = await findCurrentConflicts(params.rows);
+    if (conflicts.length) {
+      throw new Error(
+        `Extend mode found ${conflicts.length} existing current records. Use replace mode or remove duplicate rows.`,
+      );
+    }
   }
 
   const db = getDb();
@@ -143,31 +276,25 @@ export async function ingestUpload(params: {
         originalFilename: params.file.name,
         category: params.category,
         indicatorSlug: params.indicatorSlug,
-        geographyCode: params.geographyCode,
         uploadedBy: params.uploadedBy,
         rowCount: params.rows.length,
       })
       .returning();
 
     try {
-      for (const row of params.rows) {
-        const labelFilter = row.label
-          ? eq(indicatorValues.label, row.label)
-          : isNull(indicatorValues.label);
-
+      if (params.importMode === "replace") {
         await tx
           .update(indicatorValues)
           .set({ isCurrent: false })
           .where(
             and(
-              eq(indicatorValues.indicatorSlug, row.indicator_slug),
-              eq(indicatorValues.geographyCode, row.geography_code),
-              eq(indicatorValues.year, row.year),
-              labelFilter,
+              eq(indicatorValues.indicatorSlug, params.indicatorSlug),
               eq(indicatorValues.isCurrent, true),
             ),
           );
+      }
 
+      for (const row of params.rows) {
         await tx.insert(indicatorValues).values({
           indicatorSlug: row.indicator_slug,
           geographyCode: row.geography_code,
@@ -187,6 +314,15 @@ export async function ingestUpload(params: {
           isCurrent: true,
         });
       }
+
+      await tx
+        .update(indicators)
+        .set({
+          isSample: false,
+          ...(params.sourceUrl ? { sourceUrl: params.sourceUrl } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(indicators.slug, params.indicatorSlug));
 
       const [complete] = await tx
         .update(dataUploads)
